@@ -1,31 +1,48 @@
 # SITCON 人物關係圖
 
-一個使用 Node.js + Express + MySQL + Cytoscape.js 建立的人物關係圖表 demo 專案。
+一個功能完整的人物關係圖表管理系統，使用 Node.js + Express + MySQL + Cytoscape.js 建立。支援動態人物管理、關係建立、多格式圖片輸出，以及 API 金鑰驗證等功能。
+
+![SITCON 人物關係圖](https://via.placeholder.com/800x400/77B55A/FFFFFF?text=SITCON+人物關係圖)
 
 ## 專案結構
 
 ```
 sitcon-relationship/
-├── config.js          # 設定檔（需要填入 MySQL 連線資訊）
-├── server.js          # Express 後端伺服器
-├── db.sql             # MySQL 資料庫建表語法
-├── package.json       # npm 依賴設定
+├── config.js              # 主要設定檔（包含資料庫連線、API 金鑰等）
+├── config.js.example      # 設定檔範例
+├── server.js              # Express 後端伺服器
+├── db.sql                 # MySQL 資料庫建表語法與範例資料
+├── package.json           # npm 依賴設定
 ├── public/
-│   └── index.html     # 前端 Cytoscape.js 頁面
-└── README.md          # 專案說明文件
+│   └── index.html         # 前端顯示頁面
+├── .gitignore             # Git 忽略檔案
+├── .gitattributes         # Git 屬性設定
+├── .gitmessage            # Git 提交訊息範本
+└── README.md              # 專案說明文件
 ```
 
 ## 功能特色
 
-- **後端 API**：
-  - `GET /api/graph`：取得所有人物與關係
-  - `POST /api/addNode`：新增人物
-  - `POST /api/addEdge`：新增關係
-- **前端互動**：
-  - 使用 Cytoscape.js 渲染網狀圖
-  - 點擊節點顯示人物 ID
-  - 拖曳節點調整位置
-  - 表單新增人物和關係
+### 🎯 核心功能
+- **人物管理**：新增、查詢人物資料
+- **關係管理**：建立人物間的連線關係
+- **視覺化顯示**：使用 Cytoscape.js 渲染互動式關係圖
+- **智能過濾**：只顯示有連線的節點，隱藏孤立節點
+
+### 🛡️ 安全特性
+- **API 金鑰驗證**：POST 請求需要驗證（資料修改操作）
+- **公開讀取**：GET 請求無需驗證（資料查詢和圖片生成）
+
+### 📷 圖片輸出
+- **即時 PNG 生成**：`/full.png` (1200x1200px)
+- **Telegram 優化**：`/telegram.png` (800x800px) 和 `/telegram.jpg` (800x800px)
+- **自訂參數**：`/custom.jpg` (2000x2000px) 支援線條粗細和節點大小調整
+- **社群分享**：`/graph` 頁面包含 Open Graph 標籤，適合社群媒體分享
+
+### 🎨 視覺設計
+- **現代化風格**：綠色節點 (#77B55A)、藍色連線 (#b0d3f3)、白色背景
+- **無箭頭設計**：簡潔的直線連接，不顯示方向性
+- **響應式佈局**：適配不同螢幕尺寸
 
 ## 安裝與執行步驟
 
@@ -35,56 +52,89 @@ sitcon-relationship/
 npm install
 ```
 
-### 2. 設定 MySQL 資料庫
+### 2. 設定資料庫連線
 
-#### 2.1 建立資料庫和資料表
+複製設定檔範例並填入您的資料：
+
+```bash
+cp config.js.example config.js
+```
+
+編輯 `config.js` 檔案：
+
+```js
+module.exports = {
+  db: {
+    host: "localhost",                    // MySQL 主機位址
+    user: "your_username",               // MySQL 使用者名稱
+    password: "your_password",           // MySQL 密碼
+    database: "sitcon_relationship"      // 資料庫名稱
+  },
+  server: {
+    port: 3000                           // 伺服器埠號
+  },
+  api: {
+    key: "your_secure_api_key_here"      // API 驗證金鑰（請使用強密碼）
+  }
+};
+```
+
+### 3. 建立資料庫
 
 ```bash
 # 登入 MySQL
 mysql -u your_username -p
 
-# 建立資料庫（可選）
+# 建立資料庫
 CREATE DATABASE sitcon_relationship CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE sitcon_relationship;
 
-# 匯入建表語法
-source db.sql
+# 匯入資料表結構和範例資料
+source db.sql;
 ```
 
-#### 2.2 設定資料庫連線
-
-編輯 `config.js` 檔案，填入您的 MySQL 連線資訊：
-
-```js
-module.exports = {
-  db: {
-    host: "localhost",
-    user: "your_username",      // 您的 MySQL 使用者名稱
-    password: "your_password",  // 您的 MySQL 密碼
-    database: "sitcon_relationship"  // 資料庫名稱
-  },
-  server: {
-    port: 3000
-  }
-};
-```
-
-### 3. 啟動伺服器
+### 4. 啟動伺服器
 
 ```bash
+# 正式環境
 node server.js
+
+# 開發環境（自動重啟）
+npm run dev
 ```
 
-### 4. 開啟瀏覽器
+### 5. 開啟瀏覽器
 
 造訪 `http://localhost:3000` 即可看到人物關係圖。
 
-## API 使用範例
-
-### 取得圖表資料
+## 🚀 快速開始
 
 ```bash
-curl http://localhost:3000/api/graph
+# 克隆專案
+git clone <repository-url>
+cd sitcon-relationship
+
+# 安裝依賴
+npm install
+
+# 設定資料庫連線
+cp config.js.example config.js
+# 編輯 config.js 填入您的資料庫資訊
+
+# 建立資料庫並匯入資料
+mysql -u username -p < db.sql
+
+# 啟動伺服器
+npm start
+```
+
+## 📡 API 文件
+
+### 🔍 查詢 API（無需驗證）
+
+#### 取得關係圖資料
+```bash
+GET /api/graph
 ```
 
 回應格式：
@@ -100,54 +150,195 @@ curl http://localhost:3000/api/graph
 }
 ```
 
-### 新增人物
+#### 取得所有人物資料
+```bash
+GET /api/persons
+```
 
+回應格式：
+```json
+{
+  "success": true,
+  "count": 4,
+  "data": [
+    {
+      "id": 1,
+      "name": "Alice",
+      "description": "SITCON 的組織者",
+      "created_at": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+### ✏️ 修改 API（需要 API 金鑰）
+
+#### 新增人物
 ```bash
 curl -X POST http://localhost:3000/api/addNode \
   -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key_here" \
   -d '{"name": "Charlie", "description": "SITCON 講師"}'
 ```
 
-### 新增關係
-
+#### 新增關係
 ```bash
 curl -X POST http://localhost:3000/api/addEdge \
   -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key_here" \
   -d '{"from": "1", "to": "3"}'
 ```
 
-## 資料庫結構
+### 🖼️ 圖片生成 API（無需驗證）
+
+#### 標準 PNG 圖片
+```bash
+GET /full.png          # 1200x1200px PNG
+```
+
+#### Telegram 優化圖片
+```bash
+GET /telegram.png      # 800x800px PNG
+GET /telegram.jpg      # 800x800px JPG
+```
+
+#### 自訂參數圖片
+```bash
+GET /custom.jpg?width=10&nodesize=80  # 2000x2000px JPG
+```
+參數說明：
+- `width`: 線條粗細 (1-50)
+- `nodesize`: 節點大小
+
+#### 分享頁面
+```bash
+GET /graph             # 包含 Open Graph 標籤的分享頁面
+```
+
+## 🗄️ 資料庫結構
 
 ### persons 表
-- `id`: 主鍵（自動遞增）
-- `name`: 人物姓名（必填）
-- `description`: 人物描述
-- `created_at`: 建立時間
+```sql
+CREATE TABLE persons (
+    id INT AUTO_INCREMENT PRIMARY KEY,           -- 人物唯一 ID
+    name VARCHAR(255) NOT NULL,                  -- 人物姓名（必填）
+    description TEXT,                            -- 人物描述
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP -- 建立時間
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
 
 ### relations 表
-- `id`: 主鍵（自動遞增）
-- `from_person_id`: 來源人物 ID（外鍵）
-- `to_person_id`: 目標人物 ID（外鍵）
-- `created_at`: 建立時間
+```sql
+CREATE TABLE relations (
+    id INT AUTO_INCREMENT PRIMARY KEY,           -- 關係唯一 ID
+    from_person_id INT NOT NULL,                 -- 來源人物 ID
+    to_person_id INT NOT NULL,                   -- 目標人物 ID
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- 建立時間
+    FOREIGN KEY (from_person_id) REFERENCES persons(id) ON DELETE CASCADE,
+    FOREIGN KEY (to_person_id) REFERENCES persons(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+```
 
-## 預設範例資料
+## 📦 預設範例資料
 
 專案包含以下範例資料：
-- Alice（SITCON 的組織者）
-- Bob（SITCON 的講師）
-- Charlie（SITCON 的志工）
-- Diana（SITCON 的參與者）
+- **Alice**（SITCON 的組織者）
+- **Bob**（SITCON 的講師）
+- **Charlie**（SITCON 的志工）  
+- **Diana**（SITCON 的參與者）
 
-以及它們之間的關係連線。
+以及預設的關係連線：Alice ↔ Bob, Alice ↔ Charlie, Bob ↔ Diana, Charlie ↔ Diana
 
-## 技術堆疊
+## 🛠️ 技術堆疊
 
-- **後端**：Node.js + Express + MySQL
-- **前端**：HTML + CSS + JavaScript + Cytoscape.js
-- **資料庫**：MySQL 8.0+
+### 後端技術
+- **Node.js 18+** - JavaScript 運行環境
+- **Express.js** - Web 應用框架
+- **MySQL2** - 資料庫驅動程式
+- **Puppeteer** - 無頭瀏覽器（用於圖片生成）
+- **CORS** - 跨域請求支援
 
-## 開發提示
+### 前端技術
+- **HTML5** - 網頁結構
+- **CSS3** - 樣式設計
+- **Vanilla JavaScript** - 前端邏輯
+- **Cytoscape.js** - 圖表視覺化函式庫
 
-- 開啟瀏覽器開發者工具的 Console，點擊節點可看到詳細的人物資訊
-- 可以透過 API 測試工具（如 Postman）測試後端 API
-- 修改 `public/index.html` 中的樣式來自訂圖表外觀
+### 資料庫
+- **MySQL 8.0+** - 關聯式資料庫
+- **UTF-8 MB4** - 完整 Unicode 支援
+
+## 🔧 開發與部署
+
+### 開發環境
+```bash
+# 安裝 nodemon 進行開發（可選）
+npm install -g nodemon
+
+# 啟動開發伺服器
+npm run dev
+```
+
+### 環境要求
+- Node.js 18.0+
+- MySQL 8.0+
+- 2GB+ RAM（圖片生成需要記憶體）
+
+### 部署建議
+- 使用 PM2 進行進程管理
+- 設定 Nginx 反向代理
+- 定期備份 MySQL 資料庫
+- 監控伺服器資源使用狀況
+
+### 效能優化
+- 圖片生成使用快取機制
+- 資料庫查詢已優化
+- 支援水平擴展（無狀態設計）
+
+## 🐛 故障排除
+
+### 常見問題
+
+#### 1. 資料庫連線失敗
+```
+Error: ER_ACCESS_DENIED_ERROR
+```
+**解決方案**：檢查 `config.js` 中的資料庫連線資訊是否正確。
+
+#### 2. API 金鑰驗證失敗
+```
+{"error": "需要 API Key"}
+```
+**解決方案**：確保在 POST 請求中包含正確的 `x-api-key` 標頭。
+
+#### 3. 圖片生成失敗
+```
+Error: Failed to launch the browser process
+```
+**解決方案**：確保系統有足夠記憶體，或安裝 Puppeteer 所需的系統依賴。
+
+#### 4. 中文字元顯示問題
+確保 MySQL 使用 `utf8mb4` 字元集，並且連線字串包含 `charset: 'utf8mb4'`。
+
+## 🤝 貢獻指南
+
+1. Fork 此專案
+2. 建立功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 開啟 Pull Request
+
+## 📄 授權條款
+
+此專案採用 MIT 授權條款 - 詳見 [LICENSE](LICENSE) 檔案。
+
+## 🙋‍♂️ 支援與回饋
+
+如果您有任何問題或建議，歡迎：
+- 開啟 [GitHub Issue](../../issues)
+- 發送 Pull Request
+- 聯繫專案維護者
+
+---
+
+**🎉 感謝使用 SITCON 人物關係圖系統！**
