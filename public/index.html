@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITCON 人物關係圖</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #graph-image {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        .loading {
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <img id="graph-image" style="display: none;" alt="人物關係圖">
+    <div id="loading" class="loading">正在載入關係圖...</div>
+
+    <script>
+        // 生成關係圖 PNG 並顯示
+        async function generateAndDisplayPNG() {
+            try {
+                // 建立臨時的 Cytoscape 實例來生成 PNG
+                const tempContainer = document.createElement('div');
+                tempContainer.style.width = '1200px';
+                tempContainer.style.height = '800px';
+                tempContainer.style.position = 'absolute';
+                tempContainer.style.left = '-9999px';
+                document.body.appendChild(tempContainer);
+                
+                // 動態載入 Cytoscape.js
+                const script = document.createElement('script');
+                script.src = 'https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js';
+                script.onload = async function() {
+                    // 取得資料
+                    const response = await fetch('/api/graph');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    // 建立 Cytoscape 實例
+                    const cy = cytoscape({
+                        container: tempContainer,
+                        
+                        style: [
+                            {
+                                selector: 'node',
+                                style: {
+                                    'background-color': '#77B55A',
+                                    'label': 'data(label)',
+                                    'text-valign': 'center',
+                                    'text-halign': 'center',
+                                    'color': 'white',
+                                    'text-outline-width': 3,
+                                    'text-outline-color': '#2d4a1f',
+                                    'width': 80,
+                                    'height': 80,
+                                    'font-size': 14,
+                                    'font-weight': 'bold',
+                                    'border-width': 3,
+                                    'border-color': '#77B55A'
+                                }
+                            },
+                            {
+                                selector: 'edge',
+                                style: {
+                                    'width': 15,
+                                    'line-color': '#b0d3f3',
+                                    'target-arrow-color': '#b0d3f3',
+                                    'target-arrow-shape': 'triangle',
+                                    'target-arrow-size': 25,
+                                    'curve-style': 'straight',
+                                    'opacity': 1
+                                }
+                            }
+                        ],
+                        
+                        elements: [
+                            // 新增節點
+                            ...data.nodes.map(node => ({
+                                group: 'nodes',
+                                data: node
+                            })),
+                            // 新增邊
+                            ...data.edges.map(edge => ({
+                                group: 'edges',
+                                data: {
+                                    id: `edge-${edge.id}`,
+                                    source: edge.from,
+                                    target: edge.to
+                                }
+                            }))
+                        ],
+                        
+                        layout: {
+                            name: 'cose',
+                            idealEdgeLength: 200,
+                            nodeOverlap: 60,
+                            refresh: 20,
+                            fit: true,
+                            padding: 50,
+                            randomize: false,
+                            componentSpacing: 200,
+                            nodeRepulsion: 1200000,
+                            edgeElasticity: 100,
+                            nestingFactor: 5,
+                            gravity: 80,
+                            numIter: 1000,
+                            initialTemp: 200,
+                            coolingFactor: 0.95,
+                            minTemp: 1.0
+                        }
+                    });
+                    
+                    // 等待布局完成
+                    cy.ready(function() {
+                        setTimeout(() => {
+                            // 生成 PNG
+                            const png = cy.png({
+                                output: 'base64uri',
+                                bg: '#ffffff',
+                                full: true,
+                                scale: 2
+                            });
+                            
+                            // 顯示圖片
+                            const img = document.getElementById('graph-image');
+                            img.src = png;
+                            img.style.display = 'block';
+                            
+                            // 隱藏載入訊息
+                            document.getElementById('loading').style.display = 'none';
+                            
+                            // 清理臨時容器
+                            document.body.removeChild(tempContainer);
+                        }, 1000);
+                    });
+                };
+                script.onerror = function() {
+                    document.getElementById('loading').textContent = '載入失敗';
+                };
+                document.head.appendChild(script);
+                
+            } catch (error) {
+                console.error('生成 PNG 失敗:', error);
+                document.getElementById('loading').textContent = '載入關係圖失敗';
+            }
+        }
+        
+        // 頁面載入完成後生成 PNG
+        document.addEventListener('DOMContentLoaded', function() {
+            generateAndDisplayPNG();
+        });
+    </script>
+</body>
+</html>

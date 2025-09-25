@@ -1,0 +1,27 @@
+{
+  "name": "sitcon-relationship",
+  "version": "1.0.0",
+  "description": "人物關係圖 Demo 專案",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5",
+    "npm": "^11.6.1",
+    "puppeteer": "^21.11.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": [
+    "graph",
+    "cytoscape",
+    "relationship"
+  ],
+  "author": "",
+  "license": "MIT"
+}

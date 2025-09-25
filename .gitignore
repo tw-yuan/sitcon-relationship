@@ -1,0 +1,92 @@
+# 依賴套件
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 環境設定檔案
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+config.js
+
+# 日誌檔案
+logs
+*.log
+
+# 快取檔案
+.cache/
+.parcel-cache/
+
+# 建置輸出
+dist/
+build/
+
+# 編輯器設定
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 作業系統檔案
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 暫存檔案
+*.tmp
+*.temp
+
+# 測試覆蓋率報告
+coverage/
+.nyc_output
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# 可選的 npm 快取目錄
+.npm
+
+# 可選的 REPL 歷史
+.node_repl_history
+
+# 輸出的二進位檔案
+*.tgz
+
+# Yarn 完整性檔案
+.yarn-integrity
+
+# dotenv 環境變數檔案
+.env
+
+# next.js build output
+.next
+
+# nuxt.js build output
+.nuxt
+
+# vuepress build output
+.vuepress/dist
+
+# Serverless directories
+.serverless
+
+# 資料庫檔案
+*.sqlite
+*.db
+
+# 上傳的檔案
+uploads/
+
+# PM2 設定
+ecosystem.config.js

@@ -1,0 +1,32 @@
+# 設定行尾符號
+* text=auto eol=lf
+
+# 明確指定文字檔案
+*.js text
+*.json text
+*.html text
+*.css text
+*.md text
+*.txt text
+*.sql text
+*.yml text
+*.yaml text
+
+# 明確指定二進位檔案
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+
+# 語言檢測設定
+*.js linguist-language=JavaScript
+*.html linguist-language=HTML
+*.css linguist-language=CSS
+*.sql linguist-language=SQL
+*.md linguist-language=Markdown
+
+# 排除特定檔案/目錄不被計入語言統計
+public/* linguist-vendored
+node_modules/* linguist-vendored

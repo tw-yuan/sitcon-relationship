@@ -1,0 +1,14 @@
+module.exports = {
+  db: {
+    host: "your-mysql-host.com",           // MySQL 主機位址
+    user: "your_username",                 // MySQL 使用者名稱
+    password: "your_password",             // MySQL 密碼
+    database: "your_database_name"         // 資料庫名稱
+  },
+  server: {
+    port: 3000                             // 伺服器埠號
+  },
+  api: {
+    key: "your_api_key_here"               // API 驗證金鑰，請使用強密碼
+  }
+};
