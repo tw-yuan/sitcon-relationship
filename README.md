@@ -25,7 +25,7 @@ sitcon-relationship/
 
 ### 🎯 核心功能
 - **人物管理**：新增、查詢人物資料
-- **關係管理**：建立人物間的連線關係
+- **關係管理**：建立、刪除人物間的連線關係
 - **視覺化顯示**：使用 Cytoscape.js 渲染互動式關係圖
 - **智能過濾**：只顯示有連線的節點，隱藏孤立節點
 
@@ -34,13 +34,12 @@ sitcon-relationship/
 - **公開讀取**：GET 請求無需驗證（資料查詢和圖片生成）
 
 ### 📷 圖片輸出
-- **即時 PNG 生成**：`/full.png` (1200x1200px)
-- **Telegram 優化**：`/telegram.png` (800x800px) 和 `/telegram.jpg` (800x800px)
-- **自訂參數**：`/custom.jpg` (2000x2000px) 支援線條粗細和節點大小調整
-- **社群分享**：`/graph` 頁面包含 Open Graph 標籤，適合社群媒體分享
+- **自訂參數 PNG**：`/custom.png` (2000x2000px) 支援線條粗細和節點大小調整
+- **透明度支援**：PNG 格式提供真正的透明度效果，重疊線條清晰可見
+- **高解析度**：2000x2000px 高畫質輸出，適合列印和展示
 
 ### 🎨 視覺設計
-- **現代化風格**：綠色節點 (#77B55A)、藍色連線 (#b0d3f3)、白色背景
+- **現代化風格**：綠色節點 (#77B55A)、淺藍色半透明連線 (rgba(176,211,243,0.6))、白色背景
 - **無箭頭設計**：簡潔的直線連接，不顯示方向性
 - **響應式佈局**：適配不同螢幕尺寸
 
@@ -189,31 +188,31 @@ curl -X POST http://localhost:3000/api/addEdge \
   -d '{"from": "1", "to": "3"}'
 ```
 
+#### 刪除關係
+```bash
+curl -X DELETE http://localhost:3000/api/deleteEdge \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: your_api_key_here" \
+  -d '{"from": "1", "to": "3"}'
+```
+
 ### 🖼️ 圖片生成 API（無需驗證）
 
-#### 標準 PNG 圖片
+#### 自訂參數 PNG 圖片
 ```bash
-GET /full.png          # 1200x1200px PNG
+GET /custom.png                        # 預設設定：線條粗細 7、節點大小 40
+GET /custom.png?width=5&nodesize=50    # 自訂參數：線條粗細 5、節點大小 50
 ```
 
-#### Telegram 優化圖片
-```bash
-GET /telegram.png      # 800x800px PNG
-GET /telegram.jpg      # 800x800px JPG
-```
+**圖片特性：**
+- **格式**：PNG (支援透明度)
+- **尺寸**：2000x2000px 高解析度
+- **透明度**：60% 透明的線條，重疊部分清晰可見
+- **快取控制**：無快取，每次都是即時生成
 
-#### 自訂參數圖片
-```bash
-GET /custom.jpg?width=10&nodesize=80  # 2000x2000px JPG
-```
-參數說明：
-- `width`: 線條粗細 (1-50)
-- `nodesize`: 節點大小
-
-#### 分享頁面
-```bash
-GET /graph             # 包含 Open Graph 標籤的分享頁面
-```
+**參數說明：**
+- `width`: 線條粗細 (1-50，預設 7)
+- `nodesize`: 節點大小 (20-200，預設 40)
 
 ## 🗄️ 資料庫結構
 
@@ -255,7 +254,7 @@ CREATE TABLE relations (
 - **Node.js 18+** - JavaScript 運行環境
 - **Express.js** - Web 應用框架
 - **MySQL2** - 資料庫驅動程式
-- **Puppeteer** - 無頭瀏覽器（用於圖片生成）
+- **Puppeteer** - 無頭瀏覽器（用於 PNG 圖片生成）
 - **CORS** - 跨域請求支援
 
 ### 前端技術
@@ -282,7 +281,7 @@ npm run dev
 ### 環境要求
 - Node.js 18.0+
 - MySQL 8.0+
-- 2GB+ RAM（圖片生成需要記憶體）
+- 2GB+ RAM（PNG 圖片生成需要記憶體）
 
 ### 部署建議
 - 使用 PM2 進行進程管理
@@ -291,7 +290,7 @@ npm run dev
 - 監控伺服器資源使用狀況
 
 ### 效能優化
-- 圖片生成使用快取機制
+- PNG 圖片即時生成，支援透明度效果
 - 資料庫查詢已優化
 - 支援水平擴展（無狀態設計）
 
@@ -311,11 +310,14 @@ Error: ER_ACCESS_DENIED_ERROR
 ```
 **解決方案**：確保在 POST 請求中包含正確的 `x-api-key` 標頭。
 
-#### 3. 圖片生成失敗
+#### 3. PNG 圖片生成失敗
 ```
 Error: Failed to launch the browser process
 ```
-**解決方案**：確保系統有足夠記憶體，或安裝 Puppeteer 所需的系統依賴。
+**解決方案**：
+- 確保系統有足夠記憶體（建議 2GB+）
+- 安裝 Puppeteer 所需的系統依賴
+- 在 Docker 或 root 環境中，確保使用 `--no-sandbox` 參數
 
 #### 4. 中文字元顯示問題
 確保 MySQL 使用 `utf8mb4` 字元集，並且連線字串包含 `charset: 'utf8mb4'`。

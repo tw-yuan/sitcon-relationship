@@ -593,10 +593,10 @@ app.delete('/api/deleteEdge',
   }
 );
 
-// 可調整線條粗細的 PNG 端點
-app.get('/custom.png', async (req, res) => {
+// 可調整線條粗細的 JPG 端點
+app.get('/custom.jpg', async (req, res) => {
   try {
-    console.log('生成可自訂的 PNG 圖片...');
+    console.log('生成可自訂的 JPG 圖片...');
     
     // 取得參數 (預設值與 Telegram 圖片相同)
     const lineWidth = Math.max(1, Math.min(50, parseInt(req.query.width) || 7));  // 預設粗細為 7
@@ -681,8 +681,7 @@ app.get('/custom.png', async (req, res) => {
                     style: {
                         'width': ${lineWidth},
                         'line-color': 'rgba(176, 211, 243, 0.6)',
-                        'curve-style': 'straight',
-                        'opacity': 0.6
+                        'curve-style': 'straight'
                     }
                 }
             ],
@@ -731,10 +730,7 @@ app.get('/custom.png', async (req, res) => {
 </body>
 </html>`;
     
-    const browser = await puppeteer.launch({ 
-      headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
-    });
+    const browser = await puppeteer.launch({ headless: "new" });
     const page = await browser.newPage();
     
     await page.setContent(htmlContent);
@@ -744,20 +740,21 @@ app.get('/custom.png', async (req, res) => {
     await page.waitForTimeout(5000); // 簡單等待 5 秒
     
     const screenshot = await page.screenshot({ 
-      type: 'png',
+      type: 'jpeg', 
+      quality: 90,
       fullPage: true 
     });
     
     await browser.close();
     
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Content-Disposition', 'inline; filename="relationship-custom.png"');
+    res.setHeader('Content-Type', 'image/jpeg');
+    res.setHeader('Content-Disposition', 'inline; filename="relationship-custom.jpg"');
     res.setHeader('Cache-Control', 'no-cache');
     
     res.end(screenshot, 'binary');
     
   } catch (error) {
-    console.error('生成自訂 PNG 失敗:', error);
+    console.error('生成自訂 JPG 失敗:', error);
     res.status(500).json({ error: '無法生成圖片: ' + error.message });
   }
 });
