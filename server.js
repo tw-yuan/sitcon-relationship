@@ -71,8 +71,8 @@ const db = mysql.createPool({
   database: config.db.database,
   charset: 'utf8mb4',
   connectionLimit: 10,
-  acquireTimeout: 60000,
-  timeout: 60000,
+  acquireTimeout: 0,
+  timeout: 0,
   reconnect: true
 });
 
@@ -595,11 +595,14 @@ app.delete('/api/deleteEdge',
 
 // 可調整線條粗細的 PNG 端點
 app.get('/custom.png', async (req, res) => {
+  // 移除超時限制
+  req.setTimeout(0);
+  res.setTimeout(0);
   try {
     console.log('生成可自訂的 PNG 圖片...');
     
-    // 取得參數 (預設值與 Telegram 圖片相同)
-    const lineWidth = Math.max(1, Math.min(50, parseInt(req.query.width) || 7));  // 預設粗細為 7
+    // 取得參數 (無限制)
+    const lineWidth = parseInt(req.query.width) || 7;  // 預設粗細為 7
     const nodeSize = parseInt(req.query.nodesize) || 40;  // 預設節點大小為 40
     
     console.log(`使用線條粗細: ${lineWidth}px, 節點大小: ${nodeSize}px`);
@@ -723,9 +726,17 @@ app.get('/custom.png', async (req, res) => {
         
         // 標記渲染完成
         cy.ready(function() {
-            setTimeout(() => {
+            // 等待佈局完成
+            cy.on('layoutstop', function() {
                 window.renderComplete = true;
-            }, 2000);
+            });
+            
+            // 如果沒有佈局事件，在 ready 後直接標記完成
+            setTimeout(() => {
+                if (!window.renderComplete) {
+                    window.renderComplete = true;
+                }
+            }, 100);
         });
     </script>
 </body>
@@ -741,7 +752,7 @@ app.get('/custom.png', async (req, res) => {
     await page.setViewport({ width: 2000, height: 2000 });
     
     // 等待 Cytoscape 渲染完成
-    await page.waitForTimeout(5000); // 簡單等待 5 秒
+    await page.waitForFunction(() => window.renderComplete === true, { timeout: 0 });
     
     const screenshot = await page.screenshot({ 
       type: 'png',
