@@ -760,7 +760,8 @@ app.get('/custom.png', async (req, res) => {
     
     // 取得參數 (無限制)
     const lineWidth = parseInt(req.query.width) || 7;  // 預設粗細為 7
-    const nodeSize = parseInt(req.query.nodesize) || 40;  // 預設節點大小為 40
+    const nodeSize = parseInt(req.query.nodesize) || 60;  // 預設節點大小為 60（放大）
+    const fontSize = parseInt(req.query.fontsize) || Math.max(14, Math.floor(nodeSize / 2.5));
     
     console.log(`使用線條粗細: ${lineWidth}px, 節點大小: ${nodeSize}px`);
     
@@ -830,7 +831,7 @@ app.get('/custom.png', async (req, res) => {
                         'text-outline-color': '#2d4a1f',
                         'width': ${nodeSize},
                         'height': ${nodeSize},
-                        'font-size': 10,
+                        'font-size': ${fontSize},
                         'font-weight': 'bold',
                         'border-width': 2,
                         'border-color': '#77B55A'
