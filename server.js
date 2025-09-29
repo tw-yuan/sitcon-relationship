@@ -404,6 +404,163 @@ app.get('/api/persons', async (req, res) => {
   }
 });
 
+// GET /api/person/:id/relations - 查詢某個人物的關係狀態
+app.get('/api/person/:id/relations', async (req, res) => {
+  try {
+    const personId = validateId(req.params.id);
+    console.log(`查詢人物關係狀態: personId=${personId}`);
+
+    // 確認人物存在
+    const personRows = await queryDatabase(
+      'SELECT id, name, description FROM persons WHERE id = ?',
+      [personId]
+    );
+
+    if (personRows.length === 0) {
+      return res.status(404).json({
+        error: '人物不存在',
+        message: `找不到 ID 為 ${personId} 的人物`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const person = personRows[0];
+
+    // 取得所有與該人物相關的關係（雙向）
+    const relations = await queryDatabase(
+      'SELECT id, from_person_id, to_person_id FROM relations WHERE from_person_id = ? OR to_person_id = ? ORDER BY id',
+      [personId, personId]
+    );
+
+    // 收集鄰接人物 ID
+    const neighborIdSet = new Set();
+    for (const rel of relations) {
+      if (rel.from_person_id === personId) neighborIdSet.add(rel.to_person_id);
+      if (rel.to_person_id === personId) neighborIdSet.add(rel.from_person_id);
+    }
+
+    const neighborIds = Array.from(neighborIdSet);
+    let neighbors = [];
+    if (neighborIds.length > 0) {
+      const placeholders = neighborIds.map(() => '?').join(',');
+      const neighborRows = await queryDatabase(
+        `SELECT id, name FROM persons WHERE id IN (${placeholders}) ORDER BY id`,
+        neighborIds
+      );
+      neighbors = neighborRows.map(row => ({ id: row.id, name: row.name }));
+    }
+
+    const edges = relations.map(r => ({
+      id: r.id,
+      from: r.from_person_id,
+      to: r.to_person_id
+    }));
+
+    res.json({
+      success: true,
+      person: {
+        id: person.id,
+        name: person.name,
+        description: person.description || ''
+      },
+      degree: edges.length,
+      neighbors,
+      edges,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('查詢人物關係狀態錯誤:', error);
+    res.status(500).json({
+      error: '無法查詢人物關係狀態',
+      message: '伺服器內部錯誤，請稍後再試',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// GET /api/relations?id=:id - 以查詢參數查詢人物的關係狀態
+app.get('/api/relations', async (req, res) => {
+  try {
+    const { id } = req.query;
+    if (id === undefined || id === null || id === '') {
+      return res.status(400).json({
+        error: '缺少必要參數',
+        message: '請提供 id 查詢參數，例如 /api/relations?id=1',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const personId = validateId(id);
+    console.log(`查詢人物關係狀態(參數版): personId=${personId}`);
+
+    // 確認人物存在
+    const personRows = await queryDatabase(
+      'SELECT id, name, description FROM persons WHERE id = ?',
+      [personId]
+    );
+
+    if (personRows.length === 0) {
+      return res.status(404).json({
+        error: '人物不存在',
+        message: `找不到 ID 為 ${personId} 的人物`,
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const person = personRows[0];
+
+    // 取得所有與該人物相關的關係（雙向）
+    const relations = await queryDatabase(
+      'SELECT id, from_person_id, to_person_id FROM relations WHERE from_person_id = ? OR to_person_id = ? ORDER BY id',
+      [personId, personId]
+    );
+
+    // 收集鄰接人物 ID
+    const neighborIdSet = new Set();
+    for (const rel of relations) {
+      if (rel.from_person_id === personId) neighborIdSet.add(rel.to_person_id);
+      if (rel.to_person_id === personId) neighborIdSet.add(rel.from_person_id);
+    }
+
+    const neighborIds = Array.from(neighborIdSet);
+    let neighbors = [];
+    if (neighborIds.length > 0) {
+      const placeholders = neighborIds.map(() => '?').join(',');
+      const neighborRows = await queryDatabase(
+        `SELECT id, name FROM persons WHERE id IN (${placeholders}) ORDER BY id`,
+        neighborIds
+      );
+      neighbors = neighborRows.map(row => ({ id: row.id, name: row.name }));
+    }
+
+    const edges = relations.map(r => ({
+      id: r.id,
+      from: r.from_person_id,
+      to: r.to_person_id
+    }));
+
+    res.json({
+      success: true,
+      person: {
+        id: person.id,
+        name: person.name,
+        description: person.description || ''
+      },
+      degree: edges.length,
+      neighbors,
+      edges,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('查詢人物關係狀態(參數版)錯誤:', error);
+    res.status(500).json({
+      error: '無法查詢人物關係狀態',
+      message: '伺服器內部錯誤，請稍後再試',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // POST /api/addNode - 新增人物
 app.post('/api/addNode', 
   rateLimit(60000, 30), // 每分鐘最多 30 次新增
