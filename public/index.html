@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SITCON 人物關係圖 - 開發測試版</title>
-    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         body {
             margin: 0;
@@ -12,7 +12,7 @@
             background: #f5f5f5;
             font-family: Arial, sans-serif;
         }
-        
+
         .header {
             background: #2c3e50;
             color: white;
@@ -20,7 +20,7 @@
             text-align: center;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        
+
         .controls {
             background: white;
             padding: 15px;
@@ -30,24 +30,24 @@
             align-items: center;
             flex-wrap: wrap;
         }
-        
+
         .control-group {
             display: flex;
             align-items: center;
             gap: 5px;
         }
-        
+
         .control-group label {
             font-weight: bold;
             min-width: 80px;
         }
-        
+
         .control-group select, .control-group input {
             padding: 5px;
             border: 1px solid #ccc;
             border-radius: 3px;
         }
-        
+
         .control-group button {
             background: #3498db;
             color: white;
@@ -56,112 +56,87 @@
             border-radius: 3px;
             cursor: pointer;
         }
-        
+
         .control-group button:hover {
             background: #2980b9;
         }
-        
-        #cy {
+
+        #echarts {
             width: 100%;
             height: calc(100vh - 140px);
             background: #ffffff;
-        }
-        
-        .info {
-            position: absolute;
-            top: 160px;
-            right: 20px;
-            background: rgba(255,255,255,0.9);
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-            font-size: 12px;
-            max-width: 200px;
         }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>SITCON 人物關係圖 - 開發測試版</h1>
-        <p>測試不同的線條樣式以解決重疊問題</p>
+        <p>Apache ECharts 視覺化引擎</p>
     </div>
-    
+
     <div class="controls">
+        <div class="control-group">
+            <label>佈局方式:</label>
+            <select id="layoutType">
+                <option value="force" selected>力導向</option>
+                <option value="circular">圓形佈局</option>
+            </select>
+        </div>
+
         <div class="control-group">
             <label>線條樣式:</label>
             <select id="edgeStyle">
-                <option value="straight">直線</option>
-                <option value="bezier" selected>貝茲曲線</option>
-                <option value="taxi">計程車路線</option>
-                <option value="segments">分段線條</option>
+                <option value="straight" selected>直線</option>
+                <option value="curve">曲線</option>
             </select>
         </div>
-        
+
         <div class="control-group">
             <label>線條粗細:</label>
-            <input type="range" id="lineWidth" min="1" max="10" value="3" />
-            <span id="lineWidthValue">3</span>
+            <input type="range" id="lineWidth" min="1" max="10" value="1" />
+            <span id="lineWidthValue">1</span>
         </div>
-        
+
         <div class="control-group">
             <label>節點大小:</label>
-            <input type="range" id="nodeSize" min="30" max="100" value="60" />
-            <span id="nodeSizeValue">60</span>
+            <input type="range" id="nodeSize" min="30" max="100" value="40" />
+            <span id="nodeSizeValue">40</span>
         </div>
-        
+
         <div class="control-group">
             <label>節點間距:</label>
-            <input type="range" id="edgeLength" min="80" max="250" value="150" />
-            <span id="edgeLengthValue">150</span>
+            <input type="range" id="edgeLength" min="80" max="250" value="100" />
+            <span id="edgeLengthValue">100</span>
         </div>
-        
+
         <div class="control-group">
             <label>線條透明度:</label>
-            <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.4" />
-            <span id="opacityValue">0.4</span>
+            <input type="range" id="opacity" min="0.1" max="1" step="0.1" value="0.8" />
+            <span id="opacityValue">0.8</span>
         </div>
-        
+
         <div class="control-group">
             <button onclick="updateGraph()">套用變更</button>
         </div>
-        
+
         <div class="control-group">
             <button onclick="resetLayout()">重新佈局</button>
         </div>
-        
-        <div class="control-group">
-            <button onclick="optimizeOverlap()">優化重疊</button>
-        </div>
-        
-        <div class="control-group">
-            <button onclick="springOptimize()">彈簧優化</button>
-        </div>
-    </div>
-    
-    <div id="cy"></div>
-    
-    <div class="info">
-        <strong>測試說明:</strong><br/>
-        • 調整不同參數測試線條重疊<br/>
-        • 貝茲曲線可避免大部分重疊<br/>
-        • 計程車路線適合複雜關係<br/>
-        • 透明度越低重疊效果越明顯<br/>
-        • 「優化重疊」使用 AI 演算法<br/>
-        • 「彈簧優化」使用物理彈簧模型<br/>
-        • 點擊節點查看 ID
     </div>
 
+    <div id="echarts"></div>
+
     <script>
-        let cy; // 全域 Cytoscape 實例
-        let graphData; // 圖表資料
-        
+        let echartsInstance;
+        let graphData;
+
         // 頁面載入時初始化
         window.addEventListener('load', async function() {
             await loadGraphData();
-            initializeGraph();
+            initializeECharts();
             setupEventListeners();
         });
-        
+
         // 載入圖表資料
         async function loadGraphData() {
             try {
@@ -173,523 +148,169 @@
                 alert('載入資料失敗，請檢查伺服器連線');
             }
         }
-        
-        // 初始化 Cytoscape 圖表
-        function initializeGraph() {
+
+        // 初始化 ECharts
+        function initializeECharts() {
             if (!graphData) return;
-            
-            cy = cytoscape({
-                container: document.getElementById('cy'),
-                
-                elements: [
-                    ...graphData.nodes.map(node => ({ group: 'nodes', data: node })),
-                    ...graphData.edges.map(edge => ({
-                        group: 'edges',
-                        data: {
-                            id: 'edge-' + edge.id,
-                            source: edge.from,
-                            target: edge.to
-                        }
-                    }))
-                ],
-                
-                style: getGraphStyle(),
-                layout: getLayoutConfig()
+
+            const container = document.getElementById('echarts');
+            echartsInstance = echarts.init(container, null, {
+                renderer: 'canvas',  // 使用 canvas 渲染器,效能較好
+                devicePixelRatio: window.devicePixelRatio || 1
             });
-            
-            // 節點點擊事件
-            cy.on('tap', 'node', function(evt) {
-                const node = evt.target;
-                console.log('點擊節點 ID:', node.id());
-                console.log('節點資料:', node.data());
-            });
+
+            updateGraph();
         }
-        
-        // 獲取圖表樣式設定
-        function getGraphStyle() {
+
+        // 更新 ECharts 圖表
+        function updateGraph() {
+            if (!echartsInstance || !graphData) return;
+
+            const nodeSize = parseInt(document.getElementById('nodeSize').value) || 40;
+            const lineWidth = parseInt(document.getElementById('lineWidth').value) || 8;
+            const opacity = parseFloat(document.getElementById('opacity').value) || 0.8;
+            const edgeLength = parseInt(document.getElementById('edgeLength').value) || 100;
             const edgeStyle = document.getElementById('edgeStyle').value;
-            const lineWidth = parseInt(document.getElementById('lineWidth').value);
-            const nodeSize = parseInt(document.getElementById('nodeSize').value);
-            const opacity = parseFloat(document.getElementById('opacity').value);
-            
-            let edgeStyleConfig = {
-                'width': lineWidth,
-                'line-color': '#b0d3f3',
-                'opacity': opacity,
-                'line-style': 'solid',
-                'line-cap': 'round'
-            };
-            
-            // 根據選擇的樣式設定線條
-            switch(edgeStyle) {
-                case 'straight':
-                    edgeStyleConfig['curve-style'] = 'straight';
-                    break;
-                case 'bezier':
-                    edgeStyleConfig['curve-style'] = 'unbundled-bezier';
-                    edgeStyleConfig['control-point-step-size'] = 40;
-                    edgeStyleConfig['control-point-distances'] = [20, -20];
-                    edgeStyleConfig['control-point-weights'] = [0.25, 0.75];
-                    break;
-                case 'taxi':
-                    edgeStyleConfig['curve-style'] = 'taxi';
-                    edgeStyleConfig['taxi-direction'] = 'auto';
-                    edgeStyleConfig['taxi-turn'] = 50;
-                    edgeStyleConfig['taxi-turn-min-distance'] = 10;
-                    break;
-                case 'segments':
-                    edgeStyleConfig['curve-style'] = 'segments';
-                    edgeStyleConfig['segment-distances'] = [20, -20];
-                    edgeStyleConfig['segment-weights'] = [0.5];
-                    break;
-            }
-            
-            return [
-                {
-                    selector: 'node',
-                    style: {
-                        'background-color': '#77B55A',
-                        'label': 'data(label)',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'color': 'white',
-                        'text-outline-width': 2,
-                        'text-outline-color': '#2d4a1f',
-                        'width': nodeSize,
-                        'height': nodeSize,
-                        'font-size': Math.max(10, nodeSize * 0.2),
-                        'font-weight': 'bold',
-                        'border-width': 2,
-                        'border-color': '#77B55A'
-                    }
+            const layoutType = document.getElementById('layoutType').value;
+
+            // 轉換資料格式為 ECharts 格式
+            const nodes = graphData.nodes.map(node => ({
+                id: node.id,
+                name: node.label,
+                symbolSize: nodeSize,
+                itemStyle: {
+                    color: '#77B55A',
+                    borderColor: '#77B55A',
+                    borderWidth: 2
                 },
-                {
-                    selector: 'edge',
-                    style: edgeStyleConfig
+                label: {
+                    show: true,
+                    color: '#fff',
+                    fontSize: Math.max(10, nodeSize * 0.2),
+                    fontWeight: 'bold',
+                    textBorderColor: '#2d4a1f',
+                    textBorderWidth: 2
                 }
-            ];
-        }
-        
-        // 獲取佈局設定
-        function getLayoutConfig() {
-            const edgeLength = parseInt(document.getElementById('edgeLength').value);
-            
-            return {
-                name: 'cose',
-                idealEdgeLength: edgeLength,
-                nodeOverlap: 20,
-                refresh: 20,
-                fit: true,
-                padding: 40,
-                randomize: false,
-                componentSpacing: Math.max(150, edgeLength),
-                nodeRepulsion: 1000000,
-                edgeElasticity: 100,
-                nestingFactor: 5,
-                gravity: 80,
-                numIter: 1500,
-                initialTemp: 200,
-                coolingFactor: 0.95,
-                minTemp: 1.0,
-                avoidOverlap: true,
-                avoidOverlapPadding: 20
+            }));
+
+            const links = graphData.edges.map(edge => ({
+                source: edge.from,
+                target: edge.to,
+                lineStyle: {
+                    width: lineWidth,
+                    color: `rgba(128, 128, 128, ${opacity})`,  // 灰色
+                    curveness: edgeStyle === 'curve' ? 0.2 : 0
+                }
+            }));
+
+            // 根據佈局類型設定不同的配置
+            let seriesConfig = {
+                type: 'graph',
+                data: nodes,
+                links: links,
+                roam: true,
+                draggable: true,
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                emphasis: {
+                    focus: 'adjacency',
+                    lineStyle: {
+                        width: lineWidth + 2
+                    }
+                }
             };
+
+            if (layoutType === 'circular') {
+                // 圓形佈局
+                seriesConfig.layout = 'circular';
+                seriesConfig.circular = {
+                    rotateLabel: false
+                };
+            } else {
+                // 力導向佈局 - 優化參數減少重疊
+                seriesConfig.layout = 'force';
+                seriesConfig.force = {
+                    repulsion: 1800,
+                    gravity: 0.2,
+                    edgeLength: 150,
+                    layoutAnimation: false,
+                    friction: 0.6,
+                    initLayout: 'circular'
+                };
+                // 設定力導向迭代次數
+                seriesConfig.layoutIterations = 500;  // 增加迭代次數以獲得更好的佈局
+            }
+
+            const option = {
+                backgroundColor: '#ffffff',
+                animation: false,
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        if (params.dataType === 'node') {
+                            return `人物: ${params.name}<br/>ID: ${params.data.id}`;
+                        } else if (params.dataType === 'edge') {
+                            return `關係: ${params.data.source} ↔ ${params.data.target}`;
+                        }
+                    },
+                    renderMode: 'html',  // 使用 HTML 渲染 tooltip,效能較好
+                    appendToBody: true
+                },
+                series: [seriesConfig]
+            };
+
+            // 使用 notMerge: true 和 lazyUpdate: true 提升效能
+            echartsInstance.setOption(option, {
+                notMerge: true,
+                lazyUpdate: false
+            });
         }
-        
+
+        // 重新佈局
+        function resetLayout() {
+            if (!echartsInstance) return;
+
+            // 顯示載入中
+            echartsInstance.showLoading({
+                text: '重新計算佈局中...',
+                color: '#77B55A'
+            });
+
+            // 延遲執行避免卡頓
+            setTimeout(() => {
+                echartsInstance.clear();
+                updateGraph();
+                echartsInstance.hideLoading();
+            }, 100);
+        }
+
         // 設定事件監聽器
         function setupEventListeners() {
-            // 滑桿值更新顯示
             document.getElementById('lineWidth').addEventListener('input', function() {
                 document.getElementById('lineWidthValue').textContent = this.value;
             });
-            
+
             document.getElementById('nodeSize').addEventListener('input', function() {
                 document.getElementById('nodeSizeValue').textContent = this.value;
             });
-            
+
             document.getElementById('edgeLength').addEventListener('input', function() {
                 document.getElementById('edgeLengthValue').textContent = this.value;
             });
-            
+
             document.getElementById('opacity').addEventListener('input', function() {
                 document.getElementById('opacityValue').textContent = this.value;
             });
         }
-        
-        // 更新圖表（套用新設定）
-        function updateGraph() {
-            if (!cy) return;
-            
-            // 更新樣式
-            cy.style(getGraphStyle());
-            
-            // 重新佈局
-            const layout = cy.layout(getLayoutConfig());
-            layout.run();
-        }
-        
-        // 重新佈局
-        function resetLayout() {
-            if (!cy) return;
-            
-            const layout = cy.layout(getLayoutConfig());
-            layout.run();
-        }
-        
-        // 線段交點計算
-        function lineIntersection(x1, y1, x2, y2, x3, y3, x4, y4) {
-            const denom = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
-            if (Math.abs(denom) < 1e-10) return null;
-            
-            const t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denom;
-            const u = -((x1 - x2) * (y1 - y3) - (y1 - y2) * (x1 - x3)) / denom;
-            
-            if (t >= 0 && t <= 1 && u >= 0 && u <= 1) {
-                return { x: x1 + t * (x2 - x1), y: y1 + t * (y2 - y1) };
+
+        // 視窗大小改變時調整圖表
+        window.addEventListener('resize', function() {
+            if (echartsInstance) {
+                echartsInstance.resize();
             }
-            return null;
-        }
-        
-        // 計算重疊分數
-        function calculateOverlapScore(nodePositions) {
-            if (!graphData || !graphData.edges) return 0;
-            
-            let intersectionCount = 0;
-            let angleScore = 0;
-            const edges = graphData.edges;
-            
-            for (let i = 0; i < edges.length; i++) {
-                for (let j = i + 1; j < edges.length; j++) {
-                    const edge1 = edges[i];
-                    const edge2 = edges[j];
-                    
-                    // 跳過共享節點的邊
-                    if (edge1.from === edge2.from || edge1.from === edge2.to || 
-                        edge1.to === edge2.from || edge1.to === edge2.to) {
-                        continue;
-                    }
-                    
-                    const pos1From = nodePositions[edge1.from];
-                    const pos1To = nodePositions[edge1.to];
-                    const pos2From = nodePositions[edge2.from];
-                    const pos2To = nodePositions[edge2.to];
-                    
-                    if (pos1From && pos1To && pos2From && pos2To) {
-                        const intersection = lineIntersection(
-                            pos1From.x, pos1From.y, pos1To.x, pos1To.y,
-                            pos2From.x, pos2From.y, pos2To.x, pos2To.y
-                        );
-                        
-                        if (intersection) {
-                            intersectionCount++;
-                            
-                            // 計算角度差異
-                            const angle1 = Math.atan2(pos1To.y - pos1From.y, pos1To.x - pos1From.x);
-                            const angle2 = Math.atan2(pos2To.y - pos2From.y, pos2To.x - pos2From.x);
-                            let angleDiff = Math.abs(angle1 - angle2);
-                            angleDiff = Math.min(angleDiff, Math.PI - angleDiff);
-                            angleScore += (Math.PI / 2 - angleDiff) * 50;
-                        }
-                    }
-                }
-            }
-            
-            return intersectionCount * 100 + angleScore;
-        }
-        
-        // 優化重疊演算法
-        function optimizeOverlap() {
-            if (!cy) return;
-            
-            console.log('開始執行重疊最小化演算法...');
-            
-            // 獲取當前節點位置
-            const currentPositions = {};
-            cy.nodes().forEach(node => {
-                const pos = node.position();
-                currentPositions[node.id()] = { x: pos.x, y: pos.y };
-            });
-            
-            const initialScore = calculateOverlapScore(currentPositions);
-            console.log('初始重疊分數:', initialScore);
-            
-            if (initialScore === 0) {
-                alert('當前佈局已經沒有線條重疊！');
-                return;
-            }
-            
-            // 開始優化
-            let bestPositions = JSON.parse(JSON.stringify(currentPositions));
-            let bestScore = initialScore;
-            const maxIterations = 50;
-            
-            for (let iter = 0; iter < maxIterations; iter++) {
-                const testPositions = JSON.parse(JSON.stringify(bestPositions));
-                let improved = false;
-                
-                // 對每個節點嘗試移動
-                for (const nodeId of Object.keys(testPositions)) {
-                    const originalPos = { ...testPositions[nodeId] };
-                    
-                    // 動態調整移動距離
-                    const moveDistance = Math.max(5, 20 - iter * 0.3);
-                    const directions = [
-                        { dx: moveDistance, dy: 0 }, { dx: -moveDistance, dy: 0 },
-                        { dx: 0, dy: moveDistance }, { dx: 0, dy: -moveDistance },
-                        { dx: moveDistance * 0.7, dy: moveDistance * 0.7 },
-                        { dx: -moveDistance * 0.7, dy: -moveDistance * 0.7 },
-                        { dx: moveDistance * 0.7, dy: -moveDistance * 0.7 },
-                        { dx: -moveDistance * 0.7, dy: moveDistance * 0.7 }
-                    ];
-                    
-                    for (const dir of directions) {
-                        testPositions[nodeId].x = originalPos.x + dir.dx;
-                        testPositions[nodeId].y = originalPos.y + dir.dy;
-                        
-                        const score = calculateOverlapScore(testPositions);
-                        
-                        if (score < bestScore) {
-                            bestScore = score;
-                            bestPositions = JSON.parse(JSON.stringify(testPositions));
-                            improved = true;
-                            break;
-                        }
-                    }
-                    
-                    // 恢復原位置
-                    testPositions[nodeId] = originalPos;
-                }
-                
-                // 早期停止條件
-                if (!improved && iter > 10) {
-                    console.log('提前收斂於迭代', iter);
-                    break;
-                }
-            }
-            
-            const improvement = ((initialScore - bestScore) / initialScore * 100).toFixed(1);
-            console.log('優化完成！最終重疊分數:', bestScore, '改善:', improvement + '%');
-            
-            // 應用優化後的位置
-            cy.nodes().forEach(node => {
-                const newPos = bestPositions[node.id()];
-                if (newPos) {
-                    node.position(newPos);
-                }
-            });
-            
-            // 重新適配畫面
-            cy.fit();
-            
-            // 顯示結果
-            alert(`重疊優化完成！\n初始分數: ${initialScore}\n最終分數: ${bestScore}\n改善程度: ${improvement}%`);
-        }
-        
-        // 彈簧力學優化演算法
-        function springOptimize() {
-            if (!cy || !graphData) return;
-            
-            console.log('開始執行彈簧力學優化演算法...');
-            
-            // 獲取當前節點位置
-            const nodes = {};
-            cy.nodes().forEach(node => {
-                const pos = node.position();
-                nodes[node.id()] = {
-                    x: pos.x,
-                    y: pos.y,
-                    vx: 0,  // x方向速度
-                    vy: 0,  // y方向速度
-                    fx: 0,  // x方向受力
-                    fy: 0   // y方向受力
-                };
-            });
-            
-            const initialScore = calculateOverlapScore(nodes);
-            console.log('初始重疊分數:', initialScore);
-            
-            // 彈簧力學參數
-            const params = {
-                idealLength: parseInt(document.getElementById('edgeLength').value) || 150,  // 理想邊長
-                springStrength: 0.1,    // 彈簧強度
-                repulsionStrength: 3000, // 排斥力強度
-                damping: 0.9,           // 阻尼係數
-                minDistance: 30,        // 最小距離
-                maxForce: 50,           // 最大受力限制
-                iterations: 100,        // 迭代次數
-                convergenceThreshold: 0.01  // 收斂閾值
-            };
-            
-            let iteration = 0;
-            let converged = false;
-            
-            function runSpringIteration() {
-                // 清空所有受力
-                Object.values(nodes).forEach(node => {
-                    node.fx = 0;
-                    node.fy = 0;
-                });
-                
-                // 1. 計算彈簧力（吸引力）- 連接的節點之間
-                graphData.edges.forEach(edge => {
-                    const nodeA = nodes[edge.from];
-                    const nodeB = nodes[edge.to];
-                    
-                    if (!nodeA || !nodeB) return;
-                    
-                    const dx = nodeB.x - nodeA.x;
-                    const dy = nodeB.y - nodeA.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    if (distance > 0) {
-                        // 胡克定律: F = k * (distance - idealLength)
-                        const force = params.springStrength * (distance - params.idealLength);
-                        const fx = force * (dx / distance);
-                        const fy = force * (dy / distance);
-                        
-                        nodeA.fx += fx;
-                        nodeA.fy += fy;
-                        nodeB.fx -= fx;
-                        nodeB.fy -= fy;
-                    }
-                });
-                
-                // 2. 計算排斥力（庫侖力）- 所有節點對之間
-                const nodeIds = Object.keys(nodes);
-                for (let i = 0; i < nodeIds.length; i++) {
-                    for (let j = i + 1; j < nodeIds.length; j++) {
-                        const nodeA = nodes[nodeIds[i]];
-                        const nodeB = nodes[nodeIds[j]];
-                        
-                        const dx = nodeB.x - nodeA.x;
-                        const dy = nodeB.y - nodeA.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
-                        
-                        if (distance > 0 && distance < params.idealLength * 2) {
-                            // 庫侖排斥力: F = k / distance^2
-                            const force = params.repulsionStrength / (distance * distance);
-                            const fx = force * (dx / distance);
-                            const fy = force * (dy / distance);
-                            
-                            nodeA.fx -= fx;
-                            nodeA.fy -= fy;
-                            nodeB.fx += fx;
-                            nodeB.fy += fy;
-                        }
-                    }
-                }
-                
-                // 3. 計算線條交點懲罰力
-                if (graphData.edges) {
-                    for (let i = 0; i < graphData.edges.length; i++) {
-                        for (let j = i + 1; j < graphData.edges.length; j++) {
-                            const edge1 = graphData.edges[i];
-                            const edge2 = graphData.edges[j];
-                            
-                            // 跳過共享節點的邊
-                            if (edge1.from === edge2.from || edge1.from === edge2.to || 
-                                edge1.to === edge2.from || edge1.to === edge2.to) {
-                                continue;
-                            }
-                            
-                            const nodeA1 = nodes[edge1.from];
-                            const nodeA2 = nodes[edge1.to];
-                            const nodeB1 = nodes[edge2.from];
-                            const nodeB2 = nodes[edge2.to];
-                            
-                            if (nodeA1 && nodeA2 && nodeB1 && nodeB2) {
-                                const intersection = lineIntersection(
-                                    nodeA1.x, nodeA1.y, nodeA2.x, nodeA2.y,
-                                    nodeB1.x, nodeB1.y, nodeB2.x, nodeB2.y
-                                );
-                                
-                                if (intersection) {
-                                    // 對交點附近的節點施加排斥力
-                                    const crossingForce = 20;
-                                    
-                                    [nodeA1, nodeA2, nodeB1, nodeB2].forEach(node => {
-                                        const dx = node.x - intersection.x;
-                                        const dy = node.y - intersection.y;
-                                        const distance = Math.sqrt(dx * dx + dy * dy);
-                                        
-                                        if (distance > 0) {
-                                            const force = crossingForce / (distance + 1);
-                                            node.fx += force * (dx / distance);
-                                            node.fy += force * (dy / distance);
-                                        }
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // 4. 更新位置和速度
-                let totalMovement = 0;
-                Object.values(nodes).forEach(node => {
-                    // 限制受力大小
-                    const forceLength = Math.sqrt(node.fx * node.fx + node.fy * node.fy);
-                    if (forceLength > params.maxForce) {
-                        node.fx = (node.fx / forceLength) * params.maxForce;
-                        node.fy = (node.fy / forceLength) * params.maxForce;
-                    }
-                    
-                    // 更新速度（加上阻尼）
-                    node.vx = (node.vx + node.fx) * params.damping;
-                    node.vy = (node.vy + node.fy) * params.damping;
-                    
-                    // 更新位置
-                    node.x += node.vx;
-                    node.y += node.vy;
-                    
-                    totalMovement += Math.sqrt(node.vx * node.vx + node.vy * node.vy);
-                });
-                
-                iteration++;
-                
-                // 檢查收斂
-                if (totalMovement < params.convergenceThreshold || iteration >= params.iterations) {
-                    converged = true;
-                }
-                
-                // 每10次迭代更新一次視覺
-                if (iteration % 10 === 0 || converged) {
-                    cy.nodes().forEach(node => {
-                        const newPos = nodes[node.id()];
-                        if (newPos) {
-                            node.position({ x: newPos.x, y: newPos.y });
-                        }
-                    });
-                    
-                    console.log(`彈簧優化進度: ${iteration}/${params.iterations}, 總移動量: ${totalMovement.toFixed(2)}`);
-                }
-                
-                // 繼續迭代或結束
-                if (!converged) {
-                    setTimeout(runSpringIteration, 50); // 50ms 延遲以便觀察動畫
-                } else {
-                    // 優化完成
-                    const finalScore = calculateOverlapScore(nodes);
-                    const improvement = initialScore > 0 ? ((initialScore - finalScore) / initialScore * 100).toFixed(1) : 0;
-                    
-                    console.log('彈簧優化完成！', {
-                        迭代次數: iteration,
-                        初始分數: initialScore,
-                        最終分數: finalScore,
-                        改善程度: improvement + '%'
-                    });
-                    
-                    // 重新適配畫面
-                    cy.fit();
-                    
-                    // 顯示結果
-                    alert(`彈簧優化完成！\n迭代次數: ${iteration}\n初始分數: ${initialScore}\n最終分數: ${finalScore}\n改善程度: ${improvement}%`);
-                }
-            }
-            
-            // 開始彈簧優化
-            runSpringIteration();
-        }
+        });
     </script>
 </body>
 </html>

@@ -750,27 +750,28 @@ app.delete('/api/deleteEdge',
   }
 );
 
-// 可調整線條粗細的 PNG 端點
+// 使用 ECharts 生成 PNG 圖片端點
 app.get('/custom.png', async (req, res) => {
   // 移除超時限制
   req.setTimeout(0);
   res.setTimeout(0);
   try {
-    console.log('生成可自訂的 PNG 圖片...');
-    
+    console.log('使用 ECharts 生成 PNG 圖片...');
+
     // 取得參數 (無限制)
-    const lineWidth = parseInt(req.query.width) || 7;  // 預設粗細為 7
-    const nodeSize = parseInt(req.query.nodesize) || 60;  // 預設節點大小為 60（放大）
+    const lineWidth = parseInt(req.query.width) || 2;  // 預設粗細為 2
+    const nodeSize = parseInt(req.query.nodesize) || 40;  // 預設節點大小為 40
     const fontSize = parseInt(req.query.fontsize) || Math.max(14, Math.floor(nodeSize / 2.5));
-    
-    console.log(`使用線條粗細: ${lineWidth}px, 節點大小: ${nodeSize}px`);
-    
+    const opacity = parseFloat(req.query.opacity) || 0.8;  // 預設透明度為 0.8
+
+    console.log(`使用線條粗細: ${lineWidth}px, 節點大小: ${nodeSize}px, 透明度: ${opacity}`);
+
     // 取得圖表資料
     const [persons, relations] = await Promise.all([
       queryDatabase('SELECT id, name FROM persons ORDER BY name'),
       queryDatabase('SELECT id, from_person_id, to_person_id FROM relations ORDER BY id')
     ]);
-    
+
     // 找出所有有連線的人物ID
     const connectedPersonIds = new Set();
     relations.forEach(relation => {
@@ -779,154 +780,149 @@ app.get('/custom.png', async (req, res) => {
         connectedPersonIds.add(relation.to_person_id.toString());
       }
     });
-    
-    // 只保留有連線的人物節點
+
+    // 只保留有連線的人物節點 - ECharts 格式
     const nodes = persons
       .filter(person => person.id && person.name && connectedPersonIds.has(person.id.toString()))
       .map(person => ({
         id: person.id.toString(),
-        label: person.name.toString()
+        name: person.name.toString(),
+        symbolSize: nodeSize,
+        itemStyle: {
+          color: '#77B55A',
+          borderColor: '#77B55A',
+          borderWidth: 2
+        },
+        label: {
+          show: true,
+          color: '#fff',
+          fontSize: fontSize,
+          fontWeight: 'bold',
+          textBorderColor: '#2d4a1f',
+          textBorderWidth: 2
+        }
       }));
-    
-    const edges = relations
+
+    const links = relations
       .filter(relation => relation.id && relation.from_person_id && relation.to_person_id)
       .map(relation => ({
-        id: relation.id.toString(),
-        from: relation.from_person_id.toString(),
-        to: relation.to_person_id.toString()
+        source: relation.from_person_id.toString(),
+        target: relation.to_person_id.toString(),
+        lineStyle: {
+          width: lineWidth,
+          color: `rgba(128, 128, 128, ${opacity})`,  // 灰色
+          curveness: 0  // 直線
+        }
       }));
-    
-    console.log(`節點數量: ${nodes.length}, 邊數量: ${edges.length}`);
-    
-    // 生成自訂的 HTML
+
+    console.log(`節點數量: ${nodes.length}, 邊數量: ${links.length}`);
+
+    // 生成 ECharts HTML
     const htmlContent = `
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://unpkg.com/cytoscape@3.26.0/dist/cytoscape.min.js"></script>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
     <style>
         body { margin: 0; padding: 0; background: #ffffff; }
-        #cy { width: 2000px; height: 2000px; background: #ffffff; }
+        #chart { width: 2000px; height: 2000px; }
     </style>
 </head>
 <body>
-    <div id="cy"></div>
+    <div id="chart"></div>
     <script>
-        const nodes = ${JSON.stringify(nodes)};
-        const edges = ${JSON.stringify(edges)};
-        
-        const cy = cytoscape({
-            container: document.getElementById('cy'),
-            
-            style: [
-                {
-                    selector: 'node',
-                    style: {
-                        'background-color': '#77B55A',
-                        'label': 'data(label)',
-                        'text-valign': 'center',
-                        'text-halign': 'center',
-                        'color': 'white',
-                        'text-outline-width': 2,
-                        'text-outline-color': '#2d4a1f',
-                        'width': ${nodeSize},
-                        'height': ${nodeSize},
-                        'font-size': ${fontSize},
-                        'font-weight': 'bold',
-                        'border-width': 2,
-                        'border-color': '#77B55A'
-                    }
+        const chart = echarts.init(document.getElementById('chart'), null, {
+            devicePixelRatio: 2  // 設定高解析度,提升圖片清晰度
+        });
+
+        const option = {
+            backgroundColor: '#ffffff',
+            animation: false,
+            series: [{
+                type: 'graph',
+                layout: 'force',
+                data: ${JSON.stringify(nodes)},
+                links: ${JSON.stringify(links)},
+                roam: false,
+                draggable: false,
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 0,
+                force: {
+                    repulsion: 1800,
+                    gravity: 0.2,
+                    edgeLength: 150,
+                    layoutAnimation: false,
+                    friction: 0.6,
+                    initLayout: 'circular'
                 },
-                {
-                    selector: 'edge',
-                    style: {
-                        'width': ${lineWidth},
-                        'line-color': 'rgba(176, 211, 243, 0.6)',
-                        'curve-style': 'straight',
-                        'opacity': 0.6
-                    }
+                layoutIterations: 500,  // 迭代次數
+                emphasis: {
+                    disabled: true
                 }
-            ],
-            
-            elements: [
-                ...nodes.map(node => ({ group: 'nodes', data: node })),
-                ...edges.map(edge => ({
-                    group: 'edges',
-                    data: {
-                        id: 'edge-' + edge.id,
-                        source: edge.from,
-                        target: edge.to
-                    }
-                }))
-            ],
-            
-            layout: {
-                name: 'cose',
-                idealEdgeLength: 100,
-                nodeOverlap: 20,
-                refresh: 20,
-                fit: true,
-                padding: 50,
-                randomize: false,
-                componentSpacing: 180,
-                nodeRepulsion: 1200000,
-                edgeElasticity: 100,
-                nestingFactor: 5,
-                gravity: 60,
-                numIter: 800,
-                initialTemp: 200,
-                coolingFactor: 0.95,
-                minTemp: 1.0,
-                avoidOverlap: true,
-                avoidOverlapPadding: 25
-            }
-        });
-        
-        // 標記渲染完成
-        cy.ready(function() {
-            // 等待佈局完成
-            cy.on('layoutstop', function() {
-                window.renderComplete = true;
-            });
-            
-            // 如果沒有佈局事件，在 ready 後直接標記完成
-            setTimeout(() => {
-                if (!window.renderComplete) {
-                    window.renderComplete = true;
-                }
-            }, 100);
-        });
+            }]
+        };
+
+        chart.setOption(option);
+
+        // 等待佈局完成 (減少迭代次數後可以更快)
+        setTimeout(() => {
+            window.renderComplete = true;
+        }, 1000);
     </script>
 </body>
 </html>`;
-    
-    const browser = await puppeteer.launch({ 
+
+    const browser = await puppeteer.launch({
       headless: "new",
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions'
+      ]
     });
     const page = await browser.newPage();
-    
-    await page.setContent(htmlContent);
-    await page.setViewport({ width: 2000, height: 2000 });
-    
-    // 等待 Cytoscape 渲染完成
-    await page.waitForFunction(() => window.renderComplete === true, { timeout: 0 });
-    
-    const screenshot = await page.screenshot({ 
-      type: 'png',
-      fullPage: true 
+
+    // 禁用不必要的功能加快速度
+    await page.setRequestInterception(true);
+    page.on('request', (req) => {
+      if (['image', 'stylesheet', 'font'].includes(req.resourceType())) {
+        req.abort();
+      } else {
+        req.continue();
+      }
     });
-    
+
+    await page.setContent(htmlContent);
+    await page.setViewport({
+      width: 2000,
+      height: 2000,
+      deviceScaleFactor: 2  // 設定 2x 縮放比例,提高截圖品質
+    });
+
+    // 等待 ECharts 渲染完成
+    await page.waitForFunction(() => window.renderComplete === true, { timeout: 0 });
+
+    const screenshot = await page.screenshot({
+      type: 'png',
+      fullPage: true
+    });
+
     await browser.close();
-    
+
     res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Content-Disposition', 'inline; filename="relationship-custom.png"');
+    res.setHeader('Content-Disposition', 'inline; filename="relationship-echarts.png"');
     res.setHeader('Cache-Control', 'no-cache');
-    
+
     res.end(screenshot, 'binary');
-    
+
   } catch (error) {
-    console.error('生成自訂 PNG 失敗:', error);
+    console.error('生成 ECharts PNG 失敗:', error);
     res.status(500).json({ error: '無法生成圖片: ' + error.message });
   }
 });
