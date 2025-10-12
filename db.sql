@@ -15,6 +15,7 @@ CREATE TABLE persons (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     description TEXT,
+    gender ENUM('male', 'female', 'femboy', 'unknown') DEFAULT 'unknown' COMMENT '性別：male=男生, female=女生, femboy=男娘, unknown=未知',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -23,20 +24,21 @@ CREATE TABLE relations (
     id INT AUTO_INCREMENT PRIMARY KEY,
     from_person_id INT NOT NULL,
     to_person_id INT NOT NULL,
+    source TEXT COMMENT '關係來源：記錄這個關係是如何建立的（例如：SITCON 2024、黑客松、朋友介紹等）',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (from_person_id) REFERENCES persons(id) ON DELETE CASCADE,
     FOREIGN KEY (to_person_id) REFERENCES persons(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 插入範例資料
-INSERT INTO persons (name, description) VALUES
-('Alice', 'SITCON 的組織者'),
-('Bob', 'SITCON 的講師'),
-('Charlie', 'SITCON 的志工'),
-('Diana', 'SITCON 的參與者');
+INSERT INTO persons (name, description, gender) VALUES
+('Alice', 'SITCON 的組織者', 'female'),
+('Bob', 'SITCON 的講師', 'male'),
+('Charlie', 'SITCON 的志工', 'femboy'),
+('Diana', 'SITCON 的參與者', 'female');
 
-INSERT INTO relations (from_person_id, to_person_id) VALUES
-(1, 2), -- Alice 認識 Bob
-(1, 3), -- Alice 認識 Charlie
-(2, 4), -- Bob 認識 Diana
-(3, 4); -- Charlie 認識 Diana
+INSERT INTO relations (from_person_id, to_person_id, source) VALUES
+(1, 2, 'SITCON 2023 年會'), -- Alice 認識 Bob
+(1, 3, '志工培訓'), -- Alice 認識 Charlie
+(2, 4, '演講後交流'), -- Bob 認識 Diana
+(3, 4, '同組志工'); -- Charlie 認識 Diana

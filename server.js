@@ -312,8 +312,8 @@ app.get('/api/graph', async (req, res) => {
     console.log('取得圖表資料請求');
     
     const [persons, relations] = await Promise.all([
-      queryDatabase('SELECT id, name, description, created_at FROM persons ORDER BY id'),
-      queryDatabase('SELECT id, from_person_id, to_person_id, created_at FROM relations ORDER BY id')
+      queryDatabase('SELECT id, name, description, gender, created_at FROM persons ORDER BY id'),
+      queryDatabase('SELECT id, from_person_id, to_person_id, source, created_at FROM relations ORDER BY id')
     ]);
     
     // 資料驗證
@@ -377,7 +377,7 @@ app.get('/api/persons', async (req, res) => {
   try {
     console.log('取得人物列表請求');
     
-    const persons = await queryDatabase('SELECT id, name, description, created_at FROM persons ORDER BY name');
+    const persons = await queryDatabase('SELECT id, name, description, gender, created_at FROM persons ORDER BY name');
     
     if (!Array.isArray(persons)) {
       throw new Error('資料庫回傳格式錯誤');
@@ -412,7 +412,7 @@ app.get('/api/person/:id/relations', async (req, res) => {
 
     // 確認人物存在
     const personRows = await queryDatabase(
-      'SELECT id, name, description FROM persons WHERE id = ?',
+      'SELECT id, name, description, gender FROM persons WHERE id = ?',
       [personId]
     );
 
@@ -428,7 +428,7 @@ app.get('/api/person/:id/relations', async (req, res) => {
 
     // 取得所有與該人物相關的關係（雙向）
     const relations = await queryDatabase(
-      'SELECT id, from_person_id, to_person_id FROM relations WHERE from_person_id = ? OR to_person_id = ? ORDER BY id',
+      'SELECT id, from_person_id, to_person_id, source FROM relations WHERE from_person_id = ? OR to_person_id = ? ORDER BY id',
       [personId, personId]
     );
 
@@ -444,16 +444,17 @@ app.get('/api/person/:id/relations', async (req, res) => {
     if (neighborIds.length > 0) {
       const placeholders = neighborIds.map(() => '?').join(',');
       const neighborRows = await queryDatabase(
-        `SELECT id, name FROM persons WHERE id IN (${placeholders}) ORDER BY id`,
+        `SELECT id, name, gender FROM persons WHERE id IN (${placeholders}) ORDER BY id`,
         neighborIds
       );
-      neighbors = neighborRows.map(row => ({ id: row.id, name: row.name }));
+      neighbors = neighborRows.map(row => ({ id: row.id, name: row.name, gender: row.gender }));
     }
 
     const edges = relations.map(r => ({
       id: r.id,
       from: r.from_person_id,
-      to: r.to_person_id
+      to: r.to_person_id,
+      source: r.source || ''
     }));
 
     res.json({
@@ -461,7 +462,8 @@ app.get('/api/person/:id/relations', async (req, res) => {
       person: {
         id: person.id,
         name: person.name,
-        description: person.description || ''
+        description: person.description || '',
+        gender: person.gender
       },
       degree: edges.length,
       neighbors,
@@ -495,7 +497,7 @@ app.get('/api/relations', async (req, res) => {
 
     // 確認人物存在
     const personRows = await queryDatabase(
-      'SELECT id, name, description FROM persons WHERE id = ?',
+      'SELECT id, name, description, gender FROM persons WHERE id = ?',
       [personId]
     );
 
@@ -511,7 +513,7 @@ app.get('/api/relations', async (req, res) => {
 
     // 取得所有與該人物相關的關係（雙向）
     const relations = await queryDatabase(
-      'SELECT id, from_person_id, to_person_id FROM relations WHERE from_person_id = ? OR to_person_id = ? ORDER BY id',
+      'SELECT id, from_person_id, to_person_id, source FROM relations WHERE from_person_id = ? OR to_person_id = ? ORDER BY id',
       [personId, personId]
     );
 
@@ -527,16 +529,17 @@ app.get('/api/relations', async (req, res) => {
     if (neighborIds.length > 0) {
       const placeholders = neighborIds.map(() => '?').join(',');
       const neighborRows = await queryDatabase(
-        `SELECT id, name FROM persons WHERE id IN (${placeholders}) ORDER BY id`,
+        `SELECT id, name, gender FROM persons WHERE id IN (${placeholders}) ORDER BY id`,
         neighborIds
       );
-      neighbors = neighborRows.map(row => ({ id: row.id, name: row.name }));
+      neighbors = neighborRows.map(row => ({ id: row.id, name: row.name, gender: row.gender }));
     }
 
     const edges = relations.map(r => ({
       id: r.id,
       from: r.from_person_id,
-      to: r.to_person_id
+      to: r.to_person_id,
+      source: r.source || ''
     }));
 
     res.json({
@@ -544,7 +547,8 @@ app.get('/api/relations', async (req, res) => {
       person: {
         id: person.id,
         name: person.name,
-        description: person.description || ''
+        description: person.description || '',
+        gender: person.gender
       },
       degree: edges.length,
       neighbors,
@@ -567,15 +571,23 @@ app.post('/api/addNode',
   requireApiKey,
   validateInput({
     required: ['name'],
-    types: { name: 'string', description: 'string' },
+    types: { name: 'string', description: 'string', gender: 'string' },
     maxLength: { name: 100, description: 500 }
   }),
   async (req, res) => {
     try {
-      const { name, description = '' } = req.body;
+      const { name, description = '', gender = 'unknown' } = req.body;
       
       const cleanName = sanitizeInput(name);
       const cleanDescription = sanitizeInput(description);
+      
+      // 驗證性別參數
+      const validGenders = ['male', 'female', 'femboy', 'unknown'];
+      const cleanGender = validGenders.includes(gender) ? gender : 'unknown';
+      
+      if (!validGenders.includes(gender)) {
+        console.log(`性別參數無效: ${gender}，使用預設值 'unknown'`);
+      }
       
       // 檢查是否已存在相同名稱
       const existingPersons = await queryDatabase('SELECT id FROM persons WHERE name = ?', [cleanName]);
@@ -588,15 +600,16 @@ app.post('/api/addNode',
         });
       }
       
-      const result = await queryDatabase('INSERT INTO persons (name, description) VALUES (?, ?)', [cleanName, cleanDescription]);
+      const result = await queryDatabase('INSERT INTO persons (name, description, gender) VALUES (?, ?, ?)', [cleanName, cleanDescription, cleanGender]);
       
-      console.log('新增人物成功:', { id: result.insertId, name: cleanName });
+      console.log('新增人物成功:', { id: result.insertId, name: cleanName, gender: cleanGender });
       
       res.json({
         success: true,
         id: result.insertId,
         name: cleanName,
         description: cleanDescription,
+        gender: cleanGender,
         message: '人物新增成功',
         timestamp: new Date().toISOString()
       });
@@ -618,15 +631,17 @@ app.post('/api/addEdge',
   requireApiKey,
   validateInput({
     required: ['from', 'to'],
-    types: { from: 'string', to: 'string' },
-    numberRange: { from: { min: 1, max: 2147483647 }, to: { min: 1, max: 2147483647 } }
+    types: { from: 'string', to: 'string', source: 'string' },
+    numberRange: { from: { min: 1, max: 2147483647 }, to: { min: 1, max: 2147483647 } },
+    maxLength: { source: 500 }
   }),
   async (req, res) => {
     try {
-      const { from, to } = req.body;
+      const { from, to, source = '' } = req.body;
       
       const fromId = validateId(from);
       const toId = validateId(to);
+      const cleanSource = sanitizeInput(source);
       
       if (fromId === toId) {
         return res.status(400).json({
@@ -672,15 +687,16 @@ app.post('/api/addEdge',
         });
       }
       
-      const result = await queryDatabase('INSERT INTO relations (from_person_id, to_person_id) VALUES (?, ?)', [fromId, toId]);
+      const result = await queryDatabase('INSERT INTO relations (from_person_id, to_person_id, source) VALUES (?, ?, ?)', [fromId, toId, cleanSource]);
       
-      console.log('新增關係成功:', { id: result.insertId, from: fromId, to: toId });
+      console.log('新增關係成功:', { id: result.insertId, from: fromId, to: toId, source: cleanSource });
       
       res.json({
         success: true,
         id: result.insertId,
         from: fromId,
         to: toId,
+        source: cleanSource,
         message: '關係新增成功',
         timestamp: new Date().toISOString()
       });
