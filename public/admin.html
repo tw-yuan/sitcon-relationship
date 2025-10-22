@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SITCON 關係圖管理後台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Microsoft JhengHei', 'PingFang TC', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .login-container {
+            max-width: 450px;
+            margin: 0 auto;
+        }
+
+        .card {
+            background: white;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #667eea;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #77B55A;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #689e4c;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-warning {
+            background: #f39c12;
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: #e67e22;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+            width: auto;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .top-bar {
+            background: white;
+            padding: 15px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar-info {
+            color: #667eea;
+            font-weight: bold;
+        }
+
+        .relation-list {
+            max-height: 600px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+
+        .relation-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .relation-info {
+            flex: 1;
+        }
+
+        .relation-title {
+            font-weight: bold;
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .relation-source {
+            color: #666;
+            font-size: 13px;
+            font-style: italic;
+            margin-top: 5px;
+        }
+
+        .relation-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .modal-header h2 {
+            color: #667eea;
+            margin: 0;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+        }
+
+        .modal-close:hover {
+            color: #333;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .loading::after {
+            content: '載入中...';
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="login-container">
+        <div class="card">
+            <div class="header">
+                <h1>🔐 管理後台登入</h1>
+                <p>SITCON 關係圖管理系統</p>
+            </div>
+            
+            <div id="loginAlert"></div>
+            
+            <form id="loginForm" onsubmit="login(event)">
+                <div class="form-group">
+                    <label>帳號</label>
+                    <input type="text" id="loginUsername" required placeholder="請輸入帳號" />
+                </div>
+                <div class="form-group">
+                    <label>密碼</label>
+                    <input type="password" id="loginPassword" required placeholder="請輸入密碼" />
+                </div>
+                <button type="submit" class="btn btn-primary">🚀 登入</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Page (After Login) -->
+    <div id="mainPage" class="container hidden">
+        <!-- Top Bar -->
+        <div class="top-bar">
+            <div class="top-bar-info">
+                👤 <span id="usernameDisplay"></span>
+            </div>
+            <button class="btn btn-danger btn-small" onclick="logout()">🚪 登出</button>
+        </div>
+
+        <!-- Main Card -->
+        <div class="card">
+            <div class="header">
+                <h1>📝 管理後台</h1>
+                <p>編輯關係來源與人物背景</p>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="totalPersons">0</div>
+                    <div class="stat-label">總人數</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="connectedPersons">0</div>
+                    <div class="stat-label">有連線</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="totalRelations">0</div>
+                    <div class="stat-label">總關係數</div>
+                </div>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #667eea;">
+                <button class="btn btn-primary" id="tabRelations" onclick="switchTab('relations')" style="width: auto; border-radius: 8px 8px 0 0;">
+                    🔗 關係管理
+                </button>
+                <button class="btn" id="tabBackgrounds" onclick="switchTab('backgrounds')" style="width: auto; background: #e0e0e0; color: #666; border-radius: 8px 8px 0 0;">
+                    👤 人物背景
+                </button>
+            </div>
+
+            <!-- Relations Tab -->
+            <div id="relationsTab">
+                <h3 style="margin-bottom: 15px; color: #667eea;">📋 關係列表</h3>
+                <button class="btn btn-primary" onclick="loadRelations()" style="margin-bottom: 15px;">
+                    🔄 重新載入
+                </button>
+                <div id="relationList" class="relation-list">
+                    <div class="loading">載入中...</div>
+                </div>
+            </div>
+
+            <!-- Backgrounds Tab -->
+            <div id="backgroundsTab" class="hidden">
+                <h3 style="margin-bottom: 15px; color: #667eea;">👥 人物背景列表</h3>
+                <button class="btn btn-primary" onclick="loadPersons()" style="margin-bottom: 15px;">
+                    🔄 重新載入
+                </button>
+                <div id="personList" class="relation-list">
+                    <div class="loading">載入中...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- View Graph Button -->
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="btn btn-success" onclick="window.open('/custom.png', '_blank')" style="padding: 15px 40px; font-size: 16px; width: auto;">
+                🖼️ 查看關係圖
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Relation Modal -->
+    <div id="editRelationModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>✏️ 編輯關係來源</h2>
+                <button class="modal-close" onclick="closeEditRelationModal()">×</button>
+            </div>
+            <div id="editRelationAlert"></div>
+            <form id="editRelationForm" onsubmit="updateRelation(event)">
+                <div class="form-group">
+                    <label>人物關係</label>
+                    <input type="text" id="editRelationNames" readonly style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label>關係來源</label>
+                    <textarea id="editRelationSource" maxlength="500" placeholder="例如：SITCON 2024、情侶關係、手牽手等"></textarea>
+                    <small>這會影響故事生成的內容，可以寫得狗血一點！</small>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-danger" onclick="closeEditRelationModal()">取消</button>
+                    <button type="submit" class="btn btn-success">💾 儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Background Modal -->
+    <div id="editBackgroundModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📝 編輯人物背景</h2>
+                <button class="modal-close" onclick="closeEditBackgroundModal()">×</button>
+            </div>
+            <div id="editBackgroundAlert"></div>
+            <form id="editBackgroundForm" onsubmit="updateBackground(event)">
+                <div class="form-group">
+                    <label>人物名稱</label>
+                    <input type="text" id="editPersonName" readonly style="background: #f5f5f5;">
+                </div>
+                <div class="form-group">
+                    <label>年齡</label>
+                    <input type="number" id="editPersonAge" min="0" max="150" placeholder="例如：25">
+                    <small>可選填，留空表示不設定年齡</small>
+                </div>
+                <div class="form-group">
+                    <label>背景描述</label>
+                    <textarea id="editPersonBody" rows="8" placeholder="例如：Alice 是 SITCON 的資深組織者，從高中就開始參與社群活動..."></textarea>
+                    <small>這會用於 AI 生成故事時的人物設定</small>
+                </div>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-danger" onclick="closeEditBackgroundModal()">取消</button>
+                    <button type="submit" class="btn btn-success">💾 儲存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let sessionToken = localStorage.getItem('adminSessionToken') || '';
+        let personsCache = [];
+        let currentEditRelation = null;
+        let currentEditPerson = null;
+        let currentTab = 'relations';
+
+        // 頁面載入時檢查登入狀態
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (sessionToken) {
+                const isValid = await verifySession();
+                if (isValid) {
+                    showMainPage();
+                    loadRelations();
+                } else {
+                    showLoginPage();
+                }
+            } else {
+                showLoginPage();
+            }
+        });
+
+        function showLoginPage() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('mainPage').classList.add('hidden');
+        }
+
+        function showMainPage() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainPage').classList.remove('hidden');
+        }
+
+        async function login(event) {
+            event.preventDefault();
+            
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    sessionToken = data.token;
+                    localStorage.setItem('adminSessionToken', sessionToken);
+                    document.getElementById('usernameDisplay').textContent = username;
+                    showMainPage();
+                    loadRelations();
+                } else {
+                    showAlert('loginAlert', `❌ ${data.message || data.error}`, 'error');
+                }
+            } catch (error) {
+                showAlert('loginAlert', '❌ 登入失敗：' + error.message, 'error');
+            }
+        }
+
+        async function logout() {
+            try {
+                await fetch('/api/admin/logout', {
+                    method: 'POST',
+                    headers: {
+                        'x-session-token': sessionToken
+                    }
+                });
+            } catch (error) {
+                console.error('登出錯誤:', error);
+            }
+
+            sessionToken = '';
+            localStorage.removeItem('adminSessionToken');
+            showLoginPage();
+            document.getElementById('loginForm').reset();
+        }
+
+        async function verifySession() {
+            try {
+                const response = await fetch('/api/admin/verify', {
+                    headers: {
+                        'x-session-token': sessionToken
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('usernameDisplay').textContent = data.username;
+                    return true;
+                }
+                return false;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        async function loadRelations() {
+            const container = document.getElementById('relationList');
+            container.innerHTML = '<div class="loading">載入中...</div>';
+            
+            try {
+                const [graphResponse, personsResponse] = await Promise.all([
+                    fetch('/api/graph'),
+                    fetch('/api/persons')
+                ]);
+
+                if (!graphResponse.ok) {
+                    throw new Error(`無法載入關係資料: ${graphResponse.status} ${graphResponse.statusText}`);
+                }
+                
+                if (!personsResponse.ok) {
+                    throw new Error(`無法載入人物資料: ${personsResponse.status} ${personsResponse.statusText}`);
+                }
+
+                const graphData = await graphResponse.json();
+                const personsData = await personsResponse.json();
+
+                if (graphData.success && personsData.success) {
+                    personsCache = personsData.persons;
+                    displayRelations(graphData.edges);
+                    
+                    // Update stats
+                    document.getElementById('totalPersons').textContent = personsData.count;
+                    document.getElementById('connectedPersons').textContent = graphData.counts.connectedPersons;
+                    document.getElementById('totalRelations').textContent = graphData.counts.relations;
+                } else {
+                    const errorMsg = graphData.error || personsData.error || '載入失敗';
+                    container.innerHTML = `<div class="alert alert-error">❌ ${errorMsg}</div>`;
+                }
+            } catch (error) {
+                console.error('載入關係錯誤:', error);
+                container.innerHTML = `<div class="alert alert-error">❌ 載入失敗：${error.message}<br><button class="btn btn-primary btn-small" onclick="loadRelations()" style="margin-top: 10px;">🔄 重試</button></div>`;
+            }
+        }
+
+        function displayRelations(edges) {
+            const container = document.getElementById('relationList');
+            
+            if (edges.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">目前沒有任何關係資料</div>';
+                return;
+            }
+
+            container.innerHTML = edges.map(edge => {
+                const fromPerson = personsCache.find(p => p.id == edge.from);
+                const toPerson = personsCache.find(p => p.id == edge.to);
+                
+                return `
+                    <div class="relation-item">
+                        <div class="relation-info">
+                            <div class="relation-title">${escapeHtml(fromPerson?.name || edge.from)} ↔ ${escapeHtml(toPerson?.name || edge.to)}</div>
+                            ${edge.source ? `<div class="relation-source">來源：${escapeHtml(edge.source)}</div>` : '<div class="relation-source" style="color: #999;">(未填寫來源)</div>'}
+                        </div>
+                        <div class="relation-actions">
+                            <button class="btn btn-warning btn-small" onclick='editRelation(${JSON.stringify({from: edge.from, to: edge.to, source: edge.source, fromName: fromPerson?.name || edge.from, toName: toPerson?.name || edge.to})})'>
+                                ✏️ 編輯
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function editRelation(relation) {
+            currentEditRelation = relation;
+            
+            // 填入資料
+            document.getElementById('editRelationNames').value = `${relation.fromName} ↔ ${relation.toName}`;
+            document.getElementById('editRelationSource').value = relation.source || '';
+            
+            // 顯示 modal
+            document.getElementById('editRelationModal').classList.add('show');
+            document.getElementById('editRelationAlert').innerHTML = '';
+        }
+
+        function closeEditRelationModal() {
+            document.getElementById('editRelationModal').classList.remove('show');
+            currentEditRelation = null;
+        }
+
+        function closeEditBackgroundModal() {
+            document.getElementById('editBackgroundModal').classList.remove('show');
+            currentEditPerson = null;
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            if (tab === 'relations') {
+                document.getElementById('relationsTab').classList.remove('hidden');
+                document.getElementById('backgroundsTab').classList.add('hidden');
+                document.getElementById('tabRelations').classList.add('btn-primary');
+                document.getElementById('tabRelations').style.background = '';
+                document.getElementById('tabRelations').style.color = '';
+                document.getElementById('tabBackgrounds').classList.remove('btn-primary');
+                document.getElementById('tabBackgrounds').style.background = '#e0e0e0';
+                document.getElementById('tabBackgrounds').style.color = '#666';
+            } else {
+                document.getElementById('relationsTab').classList.add('hidden');
+                document.getElementById('backgroundsTab').classList.remove('hidden');
+                document.getElementById('tabRelations').classList.remove('btn-primary');
+                document.getElementById('tabRelations').style.background = '#e0e0e0';
+                document.getElementById('tabRelations').style.color = '#666';
+                document.getElementById('tabBackgrounds').classList.add('btn-primary');
+                document.getElementById('tabBackgrounds').style.background = '';
+                document.getElementById('tabBackgrounds').style.color = '';
+                
+                // 載入人物列表
+                if (personsCache.length === 0) {
+                    loadPersons();
+                } else {
+                    displayPersons(personsCache);
+                }
+            }
+        }
+
+        async function updateRelation(event) {
+            event.preventDefault();
+            
+            if (!currentEditRelation) {
+                showAlert('editRelationAlert', '找不到要編輯的關係', 'error');
+                return;
+            }
+
+            const newSource = document.getElementById('editRelationSource').value.trim();
+
+            try {
+                // 使用 PUT 更新關係（使用 Session Token，不是 API Key）
+                const updateResponse = await fetch('/api/updateEdge', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-session-token': sessionToken
+                    },
+                    body: JSON.stringify({ 
+                        from: String(currentEditRelation.from), 
+                        to: String(currentEditRelation.to),
+                        source: newSource
+                    })
+                });
+
+                const data = await updateResponse.json();
+
+                if (data.success) {
+                    showAlert('editRelationAlert', '✅ 關係更新成功！', 'success');
+                    setTimeout(() => {
+                        closeEditModal();
+                        loadRelations();
+                    }, 1500);
+                } else {
+                    showAlert('editRelationAlert', `❌ ${data.error || data.message}`, 'error');
+                }
+            } catch (error) {
+                showAlert('editRelationAlert', '❌ 更新失敗：' + error.message, 'error');
+            }
+        }
+
+        function showAlert(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            const alertClass = type === 'success' ? 'alert-success' : type === 'error' ? 'alert-error' : 'alert-warning';
+            element.innerHTML = `<div class="alert ${alertClass}">${message}</div>`;
+            
+            setTimeout(() => {
+                element.innerHTML = '';
+            }, 5000);
+        }
+
+        async function loadPersons() {
+            const container = document.getElementById('personList');
+            container.innerHTML = '<div class="loading">載入中...</div>';
+            
+            try {
+                const response = await fetch('/api/persons');
+                
+                if (!response.ok) {
+                    throw new Error(`無法載入人物資料: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    personsCache = data.persons;
+                    
+                    // 載入所有人物的背景資訊
+                    const backgroundPromises = data.persons.map(person => 
+                        fetch(`/api/background?id=${person.id}`)
+                            .then(res => res.json())
+                            .then(bgData => ({
+                                personId: person.id,
+                                background: bgData.success && bgData.background ? bgData.background : null
+                            }))
+                            .catch(err => ({
+                                personId: person.id,
+                                background: null
+                            }))
+                    );
+                    
+                    const backgrounds = await Promise.all(backgroundPromises);
+                    
+                    // 合併背景資訊到 persons
+                    const personsWithBackground = data.persons.map(person => {
+                        const bg = backgrounds.find(b => b.personId === person.id);
+                        return {
+                            ...person,
+                            background: bg ? bg.background : null
+                        };
+                    });
+                    
+                    displayPersons(personsWithBackground);
+                } else {
+                    container.innerHTML = `<div class="alert alert-error">❌ ${data.error || '載入失敗'}</div>`;
+                }
+            } catch (error) {
+                console.error('載入人物錯誤:', error);
+                container.innerHTML = `<div class="alert alert-error">❌ 載入失敗：${error.message}<br><button class="btn btn-primary btn-small" onclick="loadPersons()" style="margin-top: 10px;">🔄 重試</button></div>`;
+            }
+        }
+
+        function displayPersons(persons) {
+            const container = document.getElementById('personList');
+            
+            if (persons.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">目前沒有任何人物資料</div>';
+                return;
+            }
+
+            container.innerHTML = persons.map(person => {
+                const genderBadge = {
+                    'male': '<span style="background: #3498db; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">男生</span>',
+                    'female': '<span style="background: #e91e63; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">女生</span>',
+                    'femboy': '<span style="background: #9b59b6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">男娘</span>',
+                    'unknown': '<span style="background: #95a5a6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">未知</span>'
+                }[person.gender] || '';
+                
+                // 背景資訊
+                let backgroundInfo = '';
+                if (person.background) {
+                    const age = person.background.age ? `${person.background.age} 歲` : '';
+                    const body = person.background.body ? escapeHtml(person.background.body) : '';
+                    
+                    if (age || body) {
+                        backgroundInfo = `
+                            <div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 5px; font-size: 12px;">
+                                ${age ? `<div style="color: #667eea; font-weight: bold; margin-bottom: 3px;">年齡：${age}</div>` : ''}
+                                ${body ? `<div style="color: #555; line-height: 1.4;">${body.length > 100 ? body.substring(0, 100) + '...' : body}</div>` : ''}
+                            </div>
+                        `;
+                    }
+                } else {
+                    backgroundInfo = '<div style="margin-top: 8px; color: #999; font-size: 12px; font-style: italic;">尚未設定背景資訊</div>';
+                }
+                
+                return `
+                    <div class="relation-item">
+                        <div class="relation-info" style="flex: 1;">
+                            <div class="relation-title">
+                                ${escapeHtml(person.name)} ${genderBadge}
+                                <span style="color: #999; font-size: 14px; font-weight: normal; margin-left: 10px;">ID: ${person.id}</span>
+                            </div>
+                            <div class="relation-source" style="color: #666; font-style: normal;">
+                                ${person.description ? escapeHtml(person.description) : '(無簡介)'}
+                            </div>
+                            ${backgroundInfo}
+                        </div>
+                        <div class="relation-actions">
+                            <button class="btn btn-warning btn-small" onclick='editBackground(${person.id})'>
+                                📝 編輯背景
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function editBackground(personId) {
+            try {
+                // 載入人物基本資料
+                const person = personsCache.find(p => p.id === personId);
+                if (!person) {
+                    alert('找不到此人物');
+                    return;
+                }
+                
+                currentEditPerson = { id: personId, name: person.name };
+                
+                // 載入背景資料
+                const response = await fetch(`/api/background?id=${personId}`);
+                const data = await response.json();
+                
+                // 填入表單
+                document.getElementById('editPersonName').value = person.name;
+                
+                if (data.success && data.background) {
+                    document.getElementById('editPersonAge').value = data.background.age || '';
+                    document.getElementById('editPersonBody').value = data.background.body || '';
+                } else {
+                    document.getElementById('editPersonAge').value = '';
+                    document.getElementById('editPersonBody').value = '';
+                }
+                
+                // 顯示 modal
+                document.getElementById('editBackgroundModal').classList.add('show');
+                document.getElementById('editBackgroundAlert').innerHTML = '';
+                
+            } catch (error) {
+                console.error('載入背景資料錯誤:', error);
+                alert('載入背景資料失敗：' + error.message);
+            }
+        }
+
+        async function updateBackground(event) {
+            event.preventDefault();
+            
+            if (!currentEditPerson) {
+                showAlert('editBackgroundAlert', '找不到要編輯的人物', 'error');
+                return;
+            }
+
+            const age = document.getElementById('editPersonAge').value.trim();
+            const body = document.getElementById('editPersonBody').value.trim();
+
+            try {
+                console.log('發送背景更新請求:', {
+                    personId: currentEditPerson.id,
+                    age: age ? parseInt(age) : null,
+                    body: body,
+                    sessionToken: sessionToken ? '已設定' : '未設定'
+                });
+
+                const response = await fetch(`/api/background`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-session-token': sessionToken
+                    },
+                    body: JSON.stringify({ 
+                        id: String(currentEditPerson.id),
+                        age: age ? parseInt(age) : null,
+                        body: body
+                    })
+                });
+
+                console.log('回應狀態:', response.status, response.statusText);
+
+                const data = await response.json();
+                console.log('回應資料:', data);
+
+                if (response.status === 401) {
+                    showAlert('editBackgroundAlert', `❌ Session 已過期，請重新登入`, 'error');
+                    setTimeout(() => {
+                        closeEditBackgroundModal();
+                        logout();
+                    }, 2000);
+                    return;
+                }
+
+                if (data.success) {
+                    showAlert('editBackgroundAlert', '✅ 背景更新成功！', 'success');
+                    setTimeout(() => {
+                        closeEditBackgroundModal();
+                    }, 1500);
+                } else {
+                    showAlert('editBackgroundAlert', `❌ ${data.error || data.message}`, 'error');
+                }
+            } catch (error) {
+                console.error('更新背景錯誤:', error);
+                showAlert('editBackgroundAlert', '❌ 更新失敗：' + error.message, 'error');
+            }
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

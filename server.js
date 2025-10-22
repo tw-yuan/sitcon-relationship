@@ -4,8 +4,13 @@ const cors = require('cors');
 const path = require('path');
 const config = require('./config');
 const puppeteer = require('puppeteer');
+const crypto = require('crypto');
 
 const app = express();
+
+// Session 儲存（簡單的記憶體實作）
+const sessions = new Map();
+const SESSION_TIMEOUT = 24 * 60 * 60 * 1000; // 24 小時
 
 // 全域異常處理
 process.on('uncaughtException', (err) => {
@@ -62,6 +67,144 @@ app.use((req, res, next) => {
 
 // 靜態檔案服務
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ==================== Admin Session Management ====================
+
+// 產生隨機 Session Token
+function generateSessionToken() {
+  return crypto.randomBytes(32).toString('hex');
+}
+
+// 清理過期的 Sessions
+function cleanExpiredSessions() {
+  const now = Date.now();
+  for (const [token, session] of sessions.entries()) {
+    if (now - session.createdAt > SESSION_TIMEOUT) {
+      sessions.delete(token);
+    }
+  }
+}
+
+// 每小時清理一次過期 Session
+setInterval(cleanExpiredSessions, 60 * 60 * 1000);
+
+// 驗證 Session 中介軟體
+function requireAdminSession(req, res, next) {
+  const token = req.headers['x-session-token'];
+  
+  if (!token) {
+    return res.status(401).json({
+      error: '未登入',
+      message: '請先登入管理後台',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  const session = sessions.get(token);
+  
+  if (!session) {
+    return res.status(401).json({
+      error: 'Session 無效',
+      message: '請重新登入',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  // 檢查是否過期
+  if (Date.now() - session.createdAt > SESSION_TIMEOUT) {
+    sessions.delete(token);
+    return res.status(401).json({
+      error: 'Session 已過期',
+      message: '請重新登入',
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  req.adminUser = session.username;
+  next();
+}
+
+// POST /api/admin/login - 管理員登入
+app.post('/api/admin/login', async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    
+    // 驗證輸入
+    if (!username || !password) {
+      return res.status(400).json({
+        error: '缺少參數',
+        message: '請提供帳號和密碼',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 驗證帳號密碼
+    if (username !== config.admin.username || password !== config.admin.password) {
+      // 為了安全，等待一段隨機時間（防止時間攻擊）
+      await new Promise(resolve => setTimeout(resolve, Math.random() * 1000 + 500));
+      
+      console.log(`登入失敗: ${username} from ${req.ip}`);
+      
+      return res.status(401).json({
+        error: '帳號或密碼錯誤',
+        message: '請檢查您的帳號和密碼',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 產生 Session Token
+    const sessionToken = generateSessionToken();
+    
+    // 儲存 Session
+    sessions.set(sessionToken, {
+      username: username,
+      createdAt: Date.now()
+    });
+    
+    console.log(`管理員登入成功: ${username} from ${req.ip}`);
+    
+    res.json({
+      success: true,
+      token: sessionToken,
+      expiresIn: SESSION_TIMEOUT / 1000, // 秒數
+      message: '登入成功',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('登入錯誤:', error);
+    res.status(500).json({
+      error: '登入失敗',
+      message: '伺服器內部錯誤',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// POST /api/admin/logout - 管理員登出
+app.post('/api/admin/logout', (req, res) => {
+  const token = req.headers['x-session-token'];
+  
+  if (token) {
+    sessions.delete(token);
+  }
+  
+  res.json({
+    success: true,
+    message: '登出成功',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// GET /api/admin/verify - 驗證 Session 是否有效
+app.get('/api/admin/verify', requireAdminSession, (req, res) => {
+  res.json({
+    success: true,
+    username: req.adminUser,
+    message: 'Session 有效',
+    timestamp: new Date().toISOString()
+  });
+});
 
 // 資料庫連線池
 const db = mysql.createPool({
@@ -345,7 +488,8 @@ app.get('/api/graph', async (req, res) => {
     const edges = validRelations.map(relation => ({
       id: relation.id.toString(),
       from: relation.from_person_id.toString(),
-      to: relation.to_person_id.toString()
+      to: relation.to_person_id.toString(),
+      source: relation.source || ''
     }));
     
     console.log(`回傳圖表資料: ${nodes.length} 個節點, ${edges.length} 個邊`);
@@ -479,6 +623,184 @@ app.get('/api/person/:id/relations', async (req, res) => {
     });
   }
 });
+
+// GET /api/background?id=:id - 取得人物背景資訊（使用 Query Parameters）
+app.get('/api/background', async (req, res) => {
+  try {
+    const { id } = req.query;
+    
+    if (id === undefined || id === null || id === '') {
+      return res.status(400).json({
+        error: '缺少必要參數',
+        message: '請提供 id 參數',
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const personId = validateId(id);
+    
+    // 檢查人物是否存在
+    const personResult = await queryDatabase(
+      'SELECT id, name, description, gender FROM persons WHERE id = ?',
+      [personId]
+    );
+    
+    if (personResult.length === 0) {
+      return res.status(404).json({
+        error: '人物不存在',
+        message: `找不到 ID 為 ${personId} 的人物`,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // 查詢背景資訊
+    const backgroundResult = await queryDatabase(
+      'SELECT person_id, age, body, created_at, updated_at FROM person_backgrounds WHERE person_id = ?',
+      [personId]
+    );
+    
+    const person = personResult[0];
+    const background = backgroundResult.length > 0 ? backgroundResult[0] : null;
+    
+    res.json({
+      success: true,
+      person: {
+        id: person.id,
+        name: person.name,
+        description: person.description,
+        gender: person.gender
+      },
+      background: background ? {
+        age: background.age || null,
+        body: background.body || '',
+        created_at: background.created_at,
+        updated_at: background.updated_at
+      } : null,
+      message: background ? '成功取得人物背景' : '此人物尚無背景資訊',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('取得人物背景錯誤:', error);
+    res.status(500).json({
+      error: '無法取得人物背景',
+      message: '伺服器內部錯誤，請稍後再試',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// 驗證中間件：支援 Session 或 API Key
+function requireSessionOrApiKey(req, res, next) {
+  const sessionToken = req.headers['x-session-token'];
+  const apiKey = req.headers['x-api-key'];
+  
+  // 優先檢查 Session Token
+  if (sessionToken) {
+    const session = sessions.get(sessionToken);
+    if (session && (Date.now() - session.createdAt <= SESSION_TIMEOUT)) {
+      req.adminUser = session.username;
+      return next();
+    }
+  }
+  
+  // 檢查 API Key
+  if (apiKey) {
+    if (apiKey === config.api.key) {
+      return next();
+    }
+  }
+  
+  // 都沒有或都無效
+  return res.status(401).json({
+    error: '未授權',
+    message: '請提供有效的 Session Token 或 API Key',
+    timestamp: new Date().toISOString()
+  });
+}
+
+// POST /api/background - 新增或更新人物背景資訊（使用 Query Parameters）
+app.post('/api/background',
+  requireSessionOrApiKey, // 支援 Session Token 或 API Key
+  rateLimit(60000, 30), // 每分鐘最多 30 次
+  validateInput({
+    required: ['id'],
+    types: { 
+      id: 'string',
+      age: 'number',
+      body: 'string'
+    },
+    numberRange: {
+      id: { min: 1, max: 2147483647 },
+      age: { min: 0, max: 150 }
+    }
+  }),
+  async (req, res) => {
+    try {
+      const personId = validateId(req.body.id);
+      const { age = null, body = '' } = req.body;
+      
+      // 清理輸入
+      const cleanBody = sanitizeInput(body);
+      
+      // 檢查人物是否存在
+      const personExists = await queryDatabase(
+        'SELECT id FROM persons WHERE id = ?',
+        [personId]
+      );
+      
+      if (personExists.length === 0) {
+        return res.status(404).json({
+          error: '人物不存在',
+          message: `找不到 ID 為 ${personId} 的人物`,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // 檢查背景資訊是否已存在
+      const existingBackground = await queryDatabase(
+        'SELECT person_id FROM person_backgrounds WHERE person_id = ?',
+        [personId]
+      );
+      
+      let result;
+      let isUpdate = false;
+      
+      if (existingBackground.length > 0) {
+        // 更新現有背景
+        result = await queryDatabase(
+          'UPDATE person_backgrounds SET age = ?, body = ?, updated_at = CURRENT_TIMESTAMP WHERE person_id = ?',
+          [age, cleanBody, personId]
+        );
+        isUpdate = true;
+      } else {
+        // 新增背景
+        result = await queryDatabase(
+          'INSERT INTO person_backgrounds (person_id, age, body) VALUES (?, ?, ?)',
+          [personId, age, cleanBody]
+        );
+      }
+      
+      console.log(`${isUpdate ? '更新' : '新增'}人物背景成功:`, { personId, age, bodyLength: cleanBody.length });
+      
+      res.json({
+        success: true,
+        personId: personId,
+        action: isUpdate ? 'updated' : 'created',
+        message: `人物背景${isUpdate ? '更新' : '新增'}成功`,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('新增/更新人物背景錯誤:', error);
+      res.status(500).json({
+        error: '無法處理人物背景',
+        message: '伺服器內部錯誤，請稍後再試',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
 
 // GET /api/relations?id=:id - 以查詢參數查詢人物的關係狀態
 app.get('/api/relations', async (req, res) => {
@@ -705,6 +1027,67 @@ app.post('/api/addEdge',
       console.error('新增關係錯誤:', error);
       res.status(500).json({
         error: '無法新增關係',
+        message: '伺服器內部錯誤，請稍後再試',
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// PUT /api/updateEdge - 更新關係（只更新 source）- 管理後台專用
+app.put('/api/updateEdge',
+  requireAdminSession, // 使用 Session 驗證，不是 API Key
+  rateLimit(60000, 50), // 每分鐘最多 50 次更新
+  validateInput({
+    required: ['from', 'to'],
+    types: { from: 'string', to: 'string', source: 'string' },
+    numberRange: { from: { min: 1, max: 2147483647 }, to: { min: 1, max: 2147483647 } },
+    maxLength: { source: 500 }
+  }),
+  async (req, res) => {
+    try {
+      const { from, to, source = '' } = req.body;
+      
+      const fromId = validateId(from);
+      const toId = validateId(to);
+      const cleanSource = sanitizeInput(source);
+      
+      if (fromId === toId) {
+        return res.status(400).json({
+          error: '無效的操作',
+          message: '不能更新自己與自己的關係',
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // 更新關係的 source（雙向查詢）
+      const updateQuery = 'UPDATE relations SET source = ? WHERE (from_person_id = ? AND to_person_id = ?) OR (from_person_id = ? AND to_person_id = ?)';
+      const result = await queryDatabase(updateQuery, [cleanSource, fromId, toId, toId, fromId]);
+      
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          error: '找不到指定的關係',
+          message: `人物 ${fromId} 和 ${toId} 之間沒有關係`,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      console.log('更新關係成功:', { from: fromId, to: toId, source: cleanSource });
+      
+      res.json({
+        success: true,
+        updatedRows: result.affectedRows,
+        from: fromId,
+        to: toId,
+        source: cleanSource,
+        message: '關係更新成功',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('更新關係錯誤:', error);
+      res.status(500).json({
+        error: '無法更新關係',
         message: '伺服器內部錯誤，請稍後再試',
         timestamp: new Date().toISOString()
       });
