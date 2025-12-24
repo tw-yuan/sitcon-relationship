@@ -655,7 +655,7 @@ app.get('/api/background', async (req, res) => {
     
     // 查詢背景資訊
     const backgroundResult = await queryDatabase(
-      'SELECT person_id, age, body, created_at, updated_at FROM person_backgrounds WHERE person_id = ?',
+      'SELECT person_id, birth_year, body, created_at, updated_at FROM person_backgrounds WHERE person_id = ?',
       [personId]
     );
     
@@ -671,7 +671,7 @@ app.get('/api/background', async (req, res) => {
         gender: person.gender
       },
       background: background ? {
-        age: background.age || null,
+        birth_year: background.birth_year || null,
         body: background.body || '',
         created_at: background.created_at,
         updated_at: background.updated_at
@@ -727,18 +727,33 @@ app.post('/api/background',
     required: ['id'],
     types: { 
       id: 'string',
-      age: 'number',
+      // birth_year 可以是 string 或 number，後面會轉換
       body: 'string'
     },
     numberRange: {
       id: { min: 1, max: 2147483647 },
-      age: { min: 0, max: 150 }
+      birth_year: { min: 1900, max: 2100 } // numberRange 會自動用 parseFloat 檢查
     }
   }),
   async (req, res) => {
     try {
       const personId = validateId(req.body.id);
-      const { age = null, body = '' } = req.body;
+      
+      // 處理 birth_year：可以接受字串或數字，統一轉換成數字或 null
+      let birth_year = null;
+      if (req.body.birth_year !== undefined && req.body.birth_year !== null && req.body.birth_year !== '') {
+        const parsedYear = parseInt(req.body.birth_year, 10);
+        if (isNaN(parsedYear)) {
+          return res.status(400).json({
+            error: '輸入驗證失敗',
+            details: ['birth_year 必須是有效的數字'],
+            timestamp: new Date().toISOString()
+          });
+        }
+        birth_year = parsedYear;
+      }
+      
+      const { body = '' } = req.body;
       
       // 清理輸入
       const cleanBody = sanitizeInput(body);
@@ -769,19 +784,19 @@ app.post('/api/background',
       if (existingBackground.length > 0) {
         // 更新現有背景
         result = await queryDatabase(
-          'UPDATE person_backgrounds SET age = ?, body = ?, updated_at = CURRENT_TIMESTAMP WHERE person_id = ?',
-          [age, cleanBody, personId]
+          'UPDATE person_backgrounds SET birth_year = ?, body = ?, updated_at = CURRENT_TIMESTAMP WHERE person_id = ?',
+          [birth_year, cleanBody, personId]
         );
         isUpdate = true;
       } else {
         // 新增背景
         result = await queryDatabase(
-          'INSERT INTO person_backgrounds (person_id, age, body) VALUES (?, ?, ?)',
-          [personId, age, cleanBody]
+          'INSERT INTO person_backgrounds (person_id, birth_year, body) VALUES (?, ?, ?)',
+          [personId, birth_year, cleanBody]
         );
       }
       
-      console.log(`${isUpdate ? '更新' : '新增'}人物背景成功:`, { personId, age, bodyLength: cleanBody.length });
+      console.log(`${isUpdate ? '更新' : '新增'}人物背景成功:`, { personId, birth_year, bodyLength: cleanBody.length });
       
       res.json({
         success: true,
@@ -947,9 +962,9 @@ app.post('/api/addNode',
   }
 );
 
-// POST /api/addEdge - 新增關係
+// POST /api/addEdge - 新增或更新關係 (Upsert)
 app.post('/api/addEdge', 
-  rateLimit(60000, 50), // 每分鐘最多 50 次新增
+  rateLimit(60000, 50), // 每分鐘最多 50 次操作
   requireApiKey,
   validateInput({
     required: ['from', 'to'],
@@ -1001,32 +1016,50 @@ app.post('/api/addEdge',
         [fromId, toId, toId, fromId]
       );
       
+      let result;
+      let action;
+      let relationId;
+      
       if (existingRelations.length > 0) {
-        return res.status(409).json({
-          error: '關係已存在',
-          message: `人物 ${fromId} 和 ${toId} 之間已有關係`,
-          timestamp: new Date().toISOString()
-        });
+        // 關係已存在 → 更新 (直接覆蓋)
+        const existingRelation = existingRelations[0];
+        relationId = existingRelation.id;
+        
+        result = await queryDatabase(
+          'UPDATE relations SET source = ? WHERE id = ?',
+          [cleanSource, relationId]
+        );
+        
+        action = 'updated';
+        console.log('更新關係成功:', { id: relationId, from: fromId, to: toId, source: cleanSource });
+        
+      } else {
+        // 關係不存在 → 新增
+        result = await queryDatabase(
+          'INSERT INTO relations (from_person_id, to_person_id, source) VALUES (?, ?, ?)', 
+          [fromId, toId, cleanSource]
+        );
+        
+        relationId = result.insertId;
+        action = 'created';
+        console.log('新增關係成功:', { id: relationId, from: fromId, to: toId, source: cleanSource });
       }
-      
-      const result = await queryDatabase('INSERT INTO relations (from_person_id, to_person_id, source) VALUES (?, ?, ?)', [fromId, toId, cleanSource]);
-      
-      console.log('新增關係成功:', { id: result.insertId, from: fromId, to: toId, source: cleanSource });
       
       res.json({
         success: true,
-        id: result.insertId,
+        id: relationId,
         from: fromId,
         to: toId,
         source: cleanSource,
-        message: '關係新增成功',
+        action: action,
+        message: action === 'created' ? '關係新增成功' : '關係更新成功',
         timestamp: new Date().toISOString()
       });
       
     } catch (error) {
-      console.error('新增關係錯誤:', error);
+      console.error('新增/更新關係錯誤:', error);
       res.status(500).json({
-        error: '無法新增關係',
+        error: '無法處理關係',
         message: '伺服器內部錯誤，請稍後再試',
         timestamp: new Date().toISOString()
       });

@@ -500,9 +500,9 @@
                     <input type="text" id="editPersonName" readonly style="background: #f5f5f5;">
                 </div>
                 <div class="form-group">
-                    <label>年齡</label>
-                    <input type="number" id="editPersonAge" min="0" max="150" placeholder="例如：25">
-                    <small>可選填，留空表示不設定年齡</small>
+                    <label>出生西元年</label>
+                    <input type="number" id="editPersonBirthYear" min="1900" max="2100" placeholder="例如：2000">
+                    <small>可選填，留空表示不設定出生年份</small>
                 </div>
                 <div class="form-group">
                     <label>背景描述</label>
@@ -858,13 +858,13 @@
                 // 背景資訊
                 let backgroundInfo = '';
                 if (person.background) {
-                    const age = person.background.age ? `${person.background.age} 歲` : '';
+                    const birthYear = person.background.birth_year ? `${person.background.birth_year} 年` : '';
                     const body = person.background.body ? escapeHtml(person.background.body) : '';
                     
-                    if (age || body) {
+                    if (birthYear || body) {
                         backgroundInfo = `
                             <div style="margin-top: 8px; padding: 8px; background: #f0f0f0; border-radius: 5px; font-size: 12px;">
-                                ${age ? `<div style="color: #667eea; font-weight: bold; margin-bottom: 3px;">年齡：${age}</div>` : ''}
+                                ${birthYear ? `<div style="color: #667eea; font-weight: bold; margin-bottom: 3px;">出生：${birthYear}</div>` : ''}
                                 ${body ? `<div style="color: #555; line-height: 1.4;">${body.length > 100 ? body.substring(0, 100) + '...' : body}</div>` : ''}
                             </div>
                         `;
@@ -914,10 +914,10 @@
                 document.getElementById('editPersonName').value = person.name;
                 
                 if (data.success && data.background) {
-                    document.getElementById('editPersonAge').value = data.background.age || '';
+                    document.getElementById('editPersonBirthYear').value = data.background.birth_year || '';
                     document.getElementById('editPersonBody').value = data.background.body || '';
                 } else {
-                    document.getElementById('editPersonAge').value = '';
+                    document.getElementById('editPersonBirthYear').value = '';
                     document.getElementById('editPersonBody').value = '';
                 }
                 
@@ -939,16 +939,32 @@
                 return;
             }
 
-            const age = document.getElementById('editPersonAge').value.trim();
+            const birthYear = document.getElementById('editPersonBirthYear').value.trim();
             const body = document.getElementById('editPersonBody').value.trim();
 
             try {
+                // 確保類型正確
+                const birthYearValue = birthYear ? parseInt(birthYear, 10) : null;
+                
                 console.log('發送背景更新請求:', {
                     personId: currentEditPerson.id,
-                    age: age ? parseInt(age) : null,
+                    birth_year: birthYearValue,
+                    birth_year_type: typeof birthYearValue,
                     body: body,
                     sessionToken: sessionToken ? '已設定' : '未設定'
                 });
+
+                const requestBody = { 
+                    id: String(currentEditPerson.id),
+                    body: body
+                };
+                
+                // 只有當 birth_year 有值時才加入
+                if (birthYearValue !== null) {
+                    requestBody.birth_year = birthYearValue;
+                }
+
+                console.log('實際發送的 body:', requestBody);
 
                 const response = await fetch(`/api/background`, {
                     method: 'POST',
@@ -956,11 +972,7 @@
                         'Content-Type': 'application/json',
                         'x-session-token': sessionToken
                     },
-                    body: JSON.stringify({ 
-                        id: String(currentEditPerson.id),
-                        age: age ? parseInt(age) : null,
-                        body: body
-                    })
+                    body: JSON.stringify(requestBody)
                 });
 
                 console.log('回應狀態:', response.status, response.statusText);
