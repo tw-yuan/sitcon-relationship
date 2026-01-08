@@ -23,7 +23,7 @@ RUN npm ci
 COPY . .
 
 # Replace config.js with the docker-ready version
-COPY config.js.example config.js
+COPY config.docker.js config.js
 
 EXPOSE 3000
 
