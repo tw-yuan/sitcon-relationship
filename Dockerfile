@@ -1,4 +1,4 @@
-FROM node:18-slim
+FROM node:24-slim
 
 # Install latest chrome dev package and fonts to support major charsets (Chinese, Japanese, Arabic, Hebrew, Thai and a few others)
 RUN apt-get update \
